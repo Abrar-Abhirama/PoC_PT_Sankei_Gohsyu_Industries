@@ -1,0 +1,16 @@
+{
+  "name": "sankei-mock-ipc",
+  "version": "1.0.0",
+  "description": "Mock C# IPC simulator for PT Sankei Gohsyu Industries QR Traceability System",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "cycle": "node index.js --cycle",
+    "fail:qr": "node index.js --fail-qr",
+    "fail:vision": "node index.js --fail-vision",
+    "error": "node index.js --error",
+    "continuous": "node index.js --continuous"
+  },
+  "author": "PT Sankei Gohsyu Industries",
+  "license": "ISC"
+}
