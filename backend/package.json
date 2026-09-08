@@ -9,7 +9,10 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "migrate:up": "ts-node-dev --transpile-only src/scripts/migrate.ts up",
-    "migrate:down": "ts-node-dev --transpile-only src/scripts/migrate.ts down"
+    "migrate:down": "ts-node-dev --transpile-only src/scripts/migrate.ts down",
+    "mock:ipc": "node ../mock-ipc/index.js",
+    "mock:ipc:cycle": "node ../mock-ipc/index.js --cycle",
+    "mock:ipc:continuous": "node ../mock-ipc/index.js --continuous"
   },
   "dependencies": {
     "cors": "^2.8.5",

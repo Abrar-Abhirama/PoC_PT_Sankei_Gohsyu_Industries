@@ -185,15 +185,82 @@ docker exec -it sankei_postgres psql -U sankei_user -d sankei_db -c "\dt"
 
 ---
 
+### 5. 🤖 Mock IPC Commands (Simulasi Hardware & PLC)
+
+Digunakan untuk development dan testing tanpa membutuhkan PLC KV-8000 atau hardware Keyence fisik:
+
+```bash
+# Buka Menu Interaktif (Interactive CLI):
+node mock-ipc/index.js
+
+# Jalankan 1 siklus produksi lengkap (PASS):
+node mock-ipc/index.js --cycle
+
+# Simulasi kegagalan pembacaan QR Code (QR Read FAIL):
+node mock-ipc/index.js --fail-qr
+
+# Simulasi kegagalan inspeksi visual (Vision FAIL):
+node mock-ipc/index.js --fail-vision
+
+# Simulasi alarm / emergency stop mesin:
+node mock-ipc/index.js --error
+
+# Reset status mesin kembali ke RUNNING:
+node mock-ipc/index.js --status RUNNING
+
+# Jalankan simulasi kontinu berulang tiap 2.5 detik (Ctrl+C untuk berhenti):
+node mock-ipc/index.js --continuous
+
+# Jalankan dari folder backend via npm:
+cd backend
+npm run mock:ipc             # Menu interaktif
+npm run mock:ipc:cycle       # 1 siklus normal
+npm run mock:ipc:continuous  # Loop kontinu
+```
+
+---
+
 ## API
 
-Base URL: `http://localhost:3000`
+Base URL: `http://localhost:3000/api/v1`
 
 | Endpoint | Method | Description |
 |---|---|---|
-| `/health` | GET | Health check — confirms API and DB are running |
+| `/health` | GET | Health check — confirms API and DB connectivity |
+| `/production-orders` | GET / POST | List and create production orders |
+| `/production-orders/:id` | GET | Retrieve specific production order by ID |
+| `/production/start` | POST | Start an active production run |
+| `/production/stop` | POST | Stop/complete the running production order |
+| `/production/current` | GET | Get the currently active production order and live metrics |
+| `/products` | GET / POST | Register products and query serial numbers |
+| `/products/:serialNumber` | GET | Product details by unique QR serial number |
+| `/ipc/status` | POST | IPC machine heartbeat and status updates |
+| `/ipc/events` | POST | Forward machine events (PRODUCT_DETECTED, PRINT_STARTED, etc.) |
+| `/ipc/next-product` | GET | Retrieve next product to be marked |
+| `/ipc/inspection-result` | POST | Ingest inspection results (QR_READ, VISION) from Keyence devices |
 
-> More endpoints will be added in subsequent development phases.
+---
+
+## 🤖 Mock IPC Simulator (Panduan Lengkap)
+
+Simulator Mock IPC (`mock-ipc/index.js`) bertindak sebagai **C# IPC Service** yang mengirimkan event REST/JSON ke backend sesuai kontrak API yang sesungguhnya.
+
+### Skenario yang Didukung
+
+| Parameter CLI | Deskripsi Skenario | Hasil Produk |
+|---|---|---|
+| *(tanpa parameter)* | Menampilkan menu interaktif bernomor di terminal | Sesuai pilihan |
+| `--cycle` / `--pass` | `PRODUCT_DETECTED` ➔ `PRINT_STARTED` ➔ `PRINT_COMPLETED` ➔ `QR_READ` (PASS) ➔ `VISION_PASS` | **PASS** |
+| `--fail-qr` | Simulasi barcode buram / tidak terbaca oleh SR-1000 (`QR_READ_FAILED`) | **FAIL** |
+| `--fail-vision` | QR terbaca sukses, tetapi kamera IV3 mendeteksi goresan cacat (`VISION_FAIL`) | **FAIL** |
+| `--error` | Simulasi interlock keselamatan terbuka / alarm mesin (`MACHINE_ERROR`) | Mesin ➔ **ERROR** |
+| `--status <STATUS>` | Update status mesin (`RUNNING`, `STOPPED`, `ERROR`, `UNKNOWN`) | Update tabel `machines` |
+| `--continuous`, `-c` | Loop otomatis memproduksi barang terus-menerus (88% PASS, 6% QR Fail, 6% Vision Fail) | Streaming real-time |
+| `--interval <ms>` | Mengatur jeda waktu antar produk pada mode continuous (default: `2500` ms) | - |
+| `--machine <ID>` | Menentukan mesin target (default: `LINE-01`) | - |
+| `--event <TYPE>` | Mengirim single event langsung (misal: `PRODUCT_COMPLETED`, `EMERGENCY_STOP`) | - |
+
+> 💡 **Fitur Cerdas**: Jika simulator dijalankan saat tidak ada production order yang berstatus `RUNNING`, simulator akan **otomatis membuat dan menjalankan order sementara** (`PO-MOCK-XXXXXX`) sehingga proses pengujian dapat berjalan tanpa setup manual!
 
 ---
 
@@ -224,3 +291,4 @@ The initial schema creates the following tables:
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all available configuration options.
+
