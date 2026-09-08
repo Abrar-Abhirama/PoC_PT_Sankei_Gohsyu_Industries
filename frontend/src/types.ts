@@ -1,22 +1,46 @@
-export type ProductStatus = 'IN_PROGRESS' | 'PASS' | 'FAIL' | 'UNKNOWN';
+export interface CurrentProductionOrder {
+  id: number;
+  order_number: string;
+  product_code: string;
+  product_name: string;
+  target_quantity: number;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'CANCELLED';
+  created_at: string;
+  updated_at: string;
+  produced_quantity: string | number;
+  pass_quantity: string | number;
+  fail_quantity: string | number;
+}
 
-export interface Product {
+export interface MachineInfo {
+  id: number;
+  machine_code: string;
+  name: string;
+  status: 'RUNNING' | 'STOPPED' | 'ERROR' | 'UNKNOWN';
+  last_seen_at: string | null;
+  updated_at: string;
+}
+
+export interface MachineEvent {
+  id: number;
+  event_type: string;
+  event_data: Record<string, unknown> | null;
+  timestamp: string;
+  machine_code?: string;
+  machine_name?: string;
+  serial_number?: string;
+  product_status?: string;
+}
+
+export interface ProductItem {
   id: number;
   serial_number: string;
   production_order_id: number;
   machine_id: number | null;
-  status: ProductStatus;
+  status: 'IN_PROGRESS' | 'PASS' | 'FAIL' | 'UNKNOWN';
   created_at: string;
   completed_at: string | null;
-}
-
-export interface InspectionRecord {
-  id: number;
-  product_id: number;
-  inspection_type: 'QR_READ' | 'VISION';
-  result: 'PASS' | 'FAIL';
-  details: Record<string, unknown> | null;
-  timestamp: string;
+  order_number?: string;
 }
 
 export interface TraceabilityTimelineItem {
@@ -31,11 +55,11 @@ export interface TraceabilityTimelineItem {
 
 export interface ProductTraceability {
   serialNumber: string;
-  productionStatus: ProductStatus;
+  productionStatus: 'IN_PROGRESS' | 'PASS' | 'FAIL' | 'UNKNOWN';
   product: {
     id: number;
     serialNumber: string;
-    status: ProductStatus;
+    status: string;
     createdAt: string;
     completedAt: string | null;
     cycleTimeSeconds: number | null;
@@ -66,7 +90,14 @@ export interface ProductTraceability {
       timestamp: string | null;
       details: Record<string, unknown> | null;
     };
-    records: InspectionRecord[];
+    records: Array<{
+      id: number;
+      product_id: number;
+      inspection_type: string;
+      result: string;
+      details: Record<string, unknown> | null;
+      timestamp: string;
+    }>;
   };
   machineEvents: Array<{
     id: number;

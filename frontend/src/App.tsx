@@ -1,111 +1,219 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  CurrentProductionOrder,
+  MachineInfo,
+  MachineEvent,
+  ProductItem,
+  ProductTraceability,
+} from './types';
+import { KpiCards } from './components/KpiCards';
+import { TraceabilitySearch } from './components/TraceabilitySearch';
+import { TraceabilityModal } from './components/TraceabilityModal';
+import { RecentResultsTable } from './components/RecentResultsTable';
+import { RecentEventsFeed } from './components/RecentEventsFeed';
 
-interface HealthStatus {
-  status: string;
-  message?: string;
-}
-
-function App() {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
+export default function App() {
+  // Main state
+  const [currentOrder, setCurrentOrder] = useState<CurrentProductionOrder | null>(null);
+  const [machine, setMachine] = useState<MachineInfo | null>(null);
+  const [recentProducts, setRecentProducts] = useState<ProductItem[]>([]);
+  const [recentEvents, setRecentEvents] = useState<MachineEvent[]>([]);
+  
+  // App status
+  const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/v1/health')
-      .then((res) => res.json())
-      .then((data: HealthStatus) => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setFetchError(err.message);
-        setLoading(false);
-      });
+  // Traceability Modal State
+  const [selectedTraceability, setSelectedTraceability] = useState<ProductTraceability | null>(null);
+  const [traceabilityLoading, setTraceabilityLoading] = useState(false);
+  const [traceabilityError, setTraceabilityError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Polling ref
+  const timerRef = useRef<number | null>(null);
+
+  /**
+   * Fetch all dashboard data concurrently
+   */
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      const [orderRes, statusRes, productsRes, eventsRes, healthRes] = await Promise.allSettled([
+        fetch('/api/v1/production/current').then((r) => r.json()),
+        fetch('/api/v1/ipc/status?machineId=LINE-01').then((r) => r.json()),
+        fetch('/api/v1/products').then((r) => r.json()),
+        fetch('/api/v1/ipc/events?limit=25').then((r) => r.json()),
+        fetch('/api/v1/health').then((r) => r.json()),
+      ]);
+
+      if (healthRes.status === 'fulfilled' && healthRes.value?.status === 'ok') {
+        setIsBackendHealthy(true);
+      } else {
+        setIsBackendHealthy(false);
+      }
+
+      if (orderRes.status === 'fulfilled' && orderRes.value?.data) {
+        setCurrentOrder(orderRes.value.data);
+      } else if (orderRes.status === 'fulfilled' && orderRes.value?.data === null) {
+        setCurrentOrder(null);
+      }
+
+      if (statusRes.status === 'fulfilled' && statusRes.value?.data) {
+        setMachine(statusRes.value.data);
+      }
+
+      if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value?.data)) {
+        setRecentProducts(productsRes.value.data);
+      }
+
+      if (eventsRes.status === 'fulfilled' && Array.isArray(eventsRes.value?.data)) {
+        setRecentEvents(eventsRes.value.data);
+      }
+
+      setLastRefreshed(new Date());
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setIsBackendHealthy(false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  // Initial load and polling setup
+  useEffect(() => {
+    fetchDashboardData();
+
+    if (autoRefresh) {
+      timerRef.current = window.setInterval(fetchDashboardData, 3000);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [autoRefresh, fetchDashboardData]);
+
+  /**
+   * Fetch Traceability for a specific product serial number
+   */
+  const handleInspectProduct = async (serialNumber: string) => {
+    setIsModalOpen(true);
+    setTraceabilityLoading(true);
+    setTraceabilityError(null);
+    setSelectedTraceability(null);
+
+    try {
+      const res = await fetch(`/api/v1/products/${encodeURIComponent(serialNumber)}/traceability`);
+      const json = await res.json();
+
+      if (res.ok && json.data) {
+        setSelectedTraceability(json.data);
+      } else {
+        setTraceabilityError(json.error || `Failed to find product ${serialNumber}`);
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Network error';
+      setTraceabilityError(`Network error inspecting product: ${errorMsg}`);
+    } finally {
+      setTraceabilityLoading(false);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedTraceability(null);
+    setTraceabilityError(null);
+  };
+
   return (
-    <div className="container">
-      <header className="header">
-        <div className="logo-row">
-          <div className="logo-icon">⬡</div>
+    <div className="app-layout">
+      {/* Top Navbar */}
+      <header className="navbar">
+        <div className="navbar-brand">
+          <div className="brand-hexagon">⬡</div>
           <div>
-            <h1 className="title">QR Traceability System</h1>
-            <p className="subtitle">PT Sankei Gohsyu Industries — Proof of Concept</p>
+            <div className="brand-company">PT SANKEI GOHSYU INDUSTRIES</div>
+            <h1 className="brand-title">QR Traceability System — Production Dashboard</h1>
+          </div>
+        </div>
+
+        <div className="navbar-actions">
+          <div className="system-health">
+            <span
+              className={`health-dot ${
+                isBackendHealthy ? 'dot--healthy' : 'dot--unhealthy'
+              }`}
+            />
+            <span className="font-mono text-xs">
+              {isBackendHealthy ? 'API ONLINE' : 'DISCONNECTED'}
+            </span>
+          </div>
+
+          <div className="refresh-controls">
+            <button
+              type="button"
+              className={`toggle-btn font-mono ${autoRefresh ? 'toggle--active' : ''}`}
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              title={autoRefresh ? 'Click to pause live polling' : 'Click to resume live polling'}
+            >
+              <span className="pulse-icon">{autoRefresh ? '●' : '○'}</span>
+              {autoRefresh ? 'Live Auto-Sync (3s)' : 'Sync Paused'}
+            </button>
+
+            <button
+              type="button"
+              className="refresh-btn font-mono"
+              onClick={() => fetchDashboardData()}
+              title="Manual refresh"
+            >
+              🔄 Refresh
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="main">
-        <section className="card status-card">
-          <h2 className="card-title">System Status</h2>
+      {/* Main Dashboard Workspace */}
+      <main className="dashboard-content">
+        {/* Row 1: KPI Summary Metric Cards */}
+        <KpiCards order={currentOrder} machine={machine} />
 
-          {loading && (
-            <div className="status-row">
-              <span className="indicator indicator--loading" />
-              <span className="status-label">Checking services…</span>
-            </div>
-          )}
+        {/* Row 2: Traceability Search Bar */}
+        <TraceabilitySearch
+          onSearch={handleInspectProduct}
+          recentProducts={recentProducts}
+          searching={traceabilityLoading}
+        />
 
-          {fetchError && (
-            <div className="alert alert--error">
-              <strong>Cannot reach backend</strong>
-              <p>{fetchError}</p>
-            </div>
-          )}
-
-          {health && (
-            <div className="health-grid">
-              <div className="health-item">
-                <span className="health-label">API Health</span>
-                <span className={`badge badge--${health.status === 'ok' ? 'success' : 'error'}`}>
-                  {health.status.toUpperCase()}
-                </span>
-              </div>
-              <div className="health-item">
-                <span className="health-label">PostgreSQL</span>
-                <span className={`badge badge--${health.status === 'ok' ? 'success' : 'error'}`}>
-                  {health.status === 'ok' ? 'CONNECTED' : 'ERROR'}
-                </span>
-              </div>
-              <div className="health-item">
-                <span className="health-label">Endpoint</span>
-                <span className="health-value">GET /api/v1/health</span>
-              </div>
-              <div className="health-item">
-                <span className="health-label">Response</span>
-                <span className="health-value">{`{ "status": "${health.status}" }`}</span>
-              </div>
-              {health.message && (
-                <div className="alert alert--error">
-                  <strong>Error:</strong> {health.message}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="card info-card">
-          <h2 className="card-title">Development Environment</h2>
-          <p className="info-text">
-            The initial project scaffold is running. Business logic and features will be implemented
-            in subsequent development phases.
-          </p>
-          <div className="endpoint-list">
-            <div className="endpoint">
-              <code className="method">GET</code>
-              <code className="path">/api/v1/health</code>
-              <span className="endpoint-desc">Health check</span>
-            </div>
-            <div className="endpoint">
-              <code className="method">GET</code>
-              <code className="path">/api/v1</code>
-              <span className="endpoint-desc">API root</span>
-            </div>
-          </div>
-        </section>
+        {/* Row 3: Split View - Recent Results & Live Events Feed */}
+        <div className="dashboard-split-grid">
+          <RecentResultsTable
+            products={recentProducts}
+            onSelectProduct={handleInspectProduct}
+            loading={loading}
+          />
+          <RecentEventsFeed
+            events={recentEvents}
+            onSelectProduct={handleInspectProduct}
+            loading={loading}
+          />
+        </div>
       </main>
+
+      {/* Footer */}
+      <footer className="dashboard-footer font-mono">
+        <span>PoC Phase — PT Sankei Gohsyu Industries</span>
+        <span>Last synced: {lastRefreshed.toLocaleTimeString()}</span>
+      </footer>
+
+      {/* Traceability Inspection Modal */}
+      {isModalOpen && (
+        <TraceabilityModal
+          data={selectedTraceability}
+          loading={traceabilityLoading}
+          error={traceabilityError}
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
 }
-
-export default App;

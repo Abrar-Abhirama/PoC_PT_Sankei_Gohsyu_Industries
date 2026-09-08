@@ -42,6 +42,7 @@ app.get('/api/v1', (_req: Request, res: Response) => {
       'POST /api/v1/products',
       'GET  /api/v1/products',
       'GET  /api/v1/products/:serialNumber',
+      'GET  /api/v1/products/:serialNumber/traceability',
       'POST /api/v1/ipc/events',
       'GET  /api/v1/ipc/next-product',
       'POST /api/v1/ipc/inspection-result',

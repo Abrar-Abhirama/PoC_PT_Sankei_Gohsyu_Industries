@@ -516,4 +516,52 @@ router.post('/status', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/v1/ipc/events
+ * Retrieves recent machine events for dashboard display.
+ */
+router.get('/events', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const result = await pool.query(
+      `SELECT me.id, me.event_type, me.event_data, me.timestamp,
+              m.machine_code, m.name AS machine_name,
+              p.serial_number, p.status AS product_status
+       FROM machine_events me
+       LEFT JOIN machines m ON m.id = me.machine_id
+       LEFT JOIN products p ON p.id = me.product_id
+       ORDER BY me.timestamp DESC, me.id DESC
+       LIMIT $1`,
+      [limit]
+    );
+    res.json({ success: true, data: result.rows, total: result.rowCount });
+  } catch (err) {
+    console.error('[ipc] GET /events error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/v1/ipc/status
+ * Retrieves current status and heartbeat of machines.
+ */
+router.get('/status', async (req: Request, res: Response) => {
+  try {
+    const machineId = (req.query.machineId ?? req.query.machine_id) as string | undefined;
+    let query = `SELECT id, machine_code, name, status, last_seen_at, updated_at FROM machines`;
+    const params: unknown[] = [];
+    if (machineId) {
+      query += ` WHERE machine_code = $1 OR id::text = $1 LIMIT 1`;
+      params.push(machineId);
+    } else {
+      query += ` ORDER BY id ASC`;
+    }
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: machineId ? result.rows[0] ?? null : result.rows });
+  } catch (err) {
+    console.error('[ipc] GET /status error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
