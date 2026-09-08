@@ -1,12 +1,25 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { MachineResult, MachineResultStats } from './types';
+﻿import { useEffect, useState, useCallback, useRef } from 'react';
+import { DashboardSummary, BarcodeResultItem, PaginationInfo } from './types';
 import { KpiCards } from './components/KpiCards';
 import { RecentResultsTable } from './components/RecentResultsTable';
 
 export default function App() {
-  // Machine Results State
-  const [stats, setStats] = useState<MachineResultStats | null>(null);
-  const [results, setResults] = useState<MachineResult[]>([]);
+  // Machine Results & Summary State
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [results, setResults] = useState<BarcodeResultItem[]>([]);
+
+  // Pagination & Filtering State
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(15);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    limit: 15,
+    pageSize: 15,
+    total: 0,
+    totalPages: 1,
+  });
 
   // System & Connection State
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
@@ -23,12 +36,26 @@ export default function App() {
    */
   const fetchDashboardData = useCallback(async () => {
     try {
+      // Build paginated query parameters
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(pageSize),
+      });
+
+      if (statusFilter && statusFilter !== 'ALL') {
+        params.append('status', statusFilter);
+      }
+
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+
       const [summaryRes, resultsRes, healthRes] = await Promise.all([
         fetch('/api/v1/machine-results/summary').then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status} fetching summary`);
           return r.json();
         }),
-        fetch('/api/v1/machine-results?limit=50').then(async (r) => {
+        fetch(`/api/v1/machine-results?${params.toString()}`).then(async (r) => {
           if (!r.ok) throw new Error(`HTTP ${r.status} fetching results`);
           return r.json();
         }),
@@ -41,18 +68,32 @@ export default function App() {
       ]);
 
       // Set Backend Health status
-      if (healthRes.status === 'ok') {
+      if (healthRes?.status === 'ok') {
         setIsBackendHealthy(true);
       } else {
         setIsBackendHealthy(false);
       }
 
-      // Set Stats & Results
+      // Set Summary Stats
       if (summaryRes?.success && summaryRes.data) {
-        setStats(summaryRes.data);
+        setSummary(summaryRes.data);
       }
+
+      // Set Paginated Barcode Results
       if (resultsRes?.success && Array.isArray(resultsRes.data)) {
         setResults(resultsRes.data);
+        if (resultsRes.pagination) {
+          setPagination(resultsRes.pagination);
+        } else {
+          const total = resultsRes.total || resultsRes.data.length;
+          setPagination({
+            page,
+            limit: pageSize,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize) || 1,
+          });
+        }
       }
 
       setApiError(null);
@@ -65,14 +106,14 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, pageSize, statusFilter, searchQuery]);
 
-  // Initial load and polling setup
+  // Initial load and polling setup (every 2.5s)
   useEffect(() => {
     fetchDashboardData();
 
     if (autoRefresh) {
-      timerRef.current = window.setInterval(fetchDashboardData, 3000);
+      timerRef.current = window.setInterval(fetchDashboardData, 2500);
     }
 
     return () => {
@@ -85,10 +126,10 @@ export default function App() {
       {/* Top Navbar */}
       <header className="navbar">
         <div className="navbar-brand">
-          <div className="brand-hexagon">⬡</div>
+          <div className="brand-hexagon">⚙️</div>
           <div>
             <div className="brand-company">PT SANKEI GOHSYU INDUSTRIES</div>
-            <h1 className="brand-title">Machine OK/NG Inspection Dashboard — PoC</h1>
+            <h1 className="brand-title">Machine OK/NG Traceability Dashboard — PoC</h1>
           </div>
         </div>
 
@@ -100,7 +141,7 @@ export default function App() {
               }`}
             />
             <span className="font-mono text-xs">
-              {isBackendHealthy ? 'API ONLINE' : 'DISCONNECTED'}
+              {isBackendHealthy ? 'SYSTEM ONLINE' : 'DISCONNECTED'}
             </span>
           </div>
 
@@ -112,7 +153,7 @@ export default function App() {
               title={autoRefresh ? 'Click to pause live polling' : 'Click to resume live polling'}
             >
               <span className="pulse-icon">{autoRefresh ? '●' : '○'}</span>
-              {autoRefresh ? 'Live Auto-Sync (3s)' : 'Sync Paused'}
+              {autoRefresh ? 'Live Auto-Sync (2.5s)' : 'Sync Paused'}
             </button>
 
             <button
@@ -148,26 +189,33 @@ export default function App() {
           </div>
         )}
 
-        {/* Row 1: KPI Cards with Machine Status Indicator & OK/NG Counts */}
-        <KpiCards stats={stats} loading={loading} />
+        {/* Section 1 & 2: Current Machine Status Hero & Summary Counts */}
+        <KpiCards summary={summary} loading={loading} />
 
-        {/* Row 2: Live Machine Results Table */}
+        {/* Section 3: Barcode Results Table with Full Pagination & Filtering */}
         <div style={{ marginTop: '1.25rem' }}>
           <RecentResultsTable
             results={results}
             loading={loading}
             apiError={apiError}
             onRetry={fetchDashboardData}
+            pagination={pagination}
+            onPageChange={(newPage) => setPage(newPage)}
+            pageSize={pageSize}
+            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+            statusFilter={statusFilter}
+            onStatusFilterChange={(newStatus) => setStatusFilter(newStatus)}
+            searchQuery={searchQuery}
+            onSearchChange={(query) => setSearchQuery(query)}
           />
         </div>
       </main>
 
       {/* Footer */}
       <footer className="dashboard-footer font-mono">
-        <span>PoC Architecture: PLC → OPC UA Server → OPC UA Client → Node.js Backend → PostgreSQL → React Dashboard</span>
+        <span>PoC Flow: PostgreSQL → Node Backend → C# IPC → OPC UA → Python PLC Simulator → OPC UA → C# IPC → Node Backend → PostgreSQL</span>
         <span>Last synced: {lastRefreshed.toLocaleTimeString()}</span>
       </footer>
     </div>
   );
 }
-

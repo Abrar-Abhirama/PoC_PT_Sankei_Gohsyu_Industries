@@ -11,6 +11,7 @@
     "test": "node --test",
     "migrate:up": "ts-node-dev --transpile-only src/scripts/migrate.ts up",
     "migrate:down": "ts-node-dev --transpile-only src/scripts/migrate.ts down",
+    "seed:barcodes": "ts-node-dev --transpile-only src/scripts/seedBarcodes.ts",
     "mock:ipc": "node ../mock-ipc/index.js",
     "mock:opc:ok": "node ../mock-opc-client/index.js --ok",
     "mock:opc:ng": "node ../mock-opc-client/index.js --ng",

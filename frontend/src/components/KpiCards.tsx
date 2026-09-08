@@ -1,130 +1,182 @@
 import React from 'react';
-import { MachineResultStats } from '../types';
+import { DashboardSummary } from '../types';
 
 interface KpiCardsProps {
-  stats: MachineResultStats | null;
+  summary: DashboardSummary | null;
   loading?: boolean;
 }
 
-export const KpiCards: React.FC<KpiCardsProps> = ({ stats, loading }) => {
-  const latest = stats?.latestResult;
-  const machineCode = latest?.machineId || 'MACHINE-01';
-  const total = stats?.total ?? 0;
-  const okCount = stats?.okCount ?? 0;
-  const ngCount = stats?.ngCount ?? 0;
-  const yieldRate = stats?.yieldRate !== undefined ? stats.yieldRate.toFixed(1) : '100.0';
+export const KpiCards: React.FC<KpiCardsProps> = ({ summary, loading }) => {
+  const latest = summary?.latestResult;
+  const machineId = latest?.machineId || 'MACHINE-01';
+  const latestBarcode = latest?.barcode || '-';
+  const latestStatus = latest?.status; // 'OK' | 'NG' | undefined
 
-  const statusType = latest?.status; // 'OK' | 'NG' | undefined
+  const formatTime = (ts?: string) => {
+    if (!ts) return '-';
+    try {
+      return new Date(ts).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return ts;
+    }
+  };
+
+  const totalProcessed = summary?.totalProcessed ?? 0;
+  const okCount = summary?.okCount ?? 0;
+  const ngCount = summary?.ngCount ?? 0;
+  const pendingCount = summary?.pendingCount ?? 0;
+  const processingCount = summary?.processingCount ?? 0;
+  const yieldRate = summary?.yieldRate !== undefined ? summary.yieldRate.toFixed(1) : '100.0';
 
   return (
-    <section className="kpi-grid">
-      {/* 1. Machine Status Indicator */}
-      <div className="card kpi-card">
-        <div className="kpi-header">
-          <span className="kpi-tag">Machine Status Indicator</span>
-          <span className="kpi-badge font-mono">{machineCode}</span>
-        </div>
-        <div className="kpi-main">
-          {statusType === 'OK' ? (
-            <div className="status-indicator-box indicator--ok">
-              <span className="indicator-beacon beacon--ok" />
-              STATUS: OK
-            </div>
-          ) : statusType === 'NG' ? (
-            <div className="status-indicator-box indicator--ng">
-              <span className="indicator-beacon beacon--ng" />
-              STATUS: NG
-            </div>
-          ) : (
-            <div className="status-indicator-box indicator--standby">
-              <span className="indicator-beacon beacon--standby" />
-              STANDBY
-            </div>
-          )}
-        </div>
-        <div className="kpi-footer">
-          <span className="kpi-subtext font-mono">
-            {latest
-              ? `Signal at ${new Date(latest.timestamp).toLocaleTimeString()}`
-              : 'Awaiting OPC UA Client signal'}
-          </span>
-        </div>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* 1. CURRENT MACHINE STATUS (PROMINENT HERO CARD) */}
+      <section className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, var(--color-surface) 0%, rgba(17, 23, 38, 0.8) 100%)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <span className="kpi-tag" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Machine Status</span>
+            <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+              Machine: <span className="text-cyan font-mono">{machineId}</span>
+            </h2>
+          </div>
 
-      {/* 2. Total Results Card */}
-      <div className="card kpi-card">
-        <div className="kpi-header">
-          <span className="kpi-tag">Total Results</span>
-          <span className="kpi-badge font-mono">INSPECTIONS</span>
-        </div>
-        <div className="kpi-main">
-          <div className="progress-numbers">
-            <span className="current-num font-mono">
-              {loading && !stats ? '...' : total}
-            </span>
-            <span className="target-num font-mono">units</span>
+          <div>
+            {latestStatus === 'OK' ? (
+              <div className="status-indicator-box indicator--ok" style={{ fontSize: '1.5rem', padding: '0.6rem 1.5rem', borderRadius: '12px' }}>
+                <span className="indicator-beacon beacon--ok" style={{ width: '14px', height: '14px' }} />
+                STATUS: OK
+              </div>
+            ) : latestStatus === 'NG' ? (
+              <div className="status-indicator-box indicator--ng" style={{ fontSize: '1.5rem', padding: '0.6rem 1.5rem', borderRadius: '12px' }}>
+                <span className="indicator-beacon beacon--ng" style={{ width: '14px', height: '14px' }} />
+                STATUS: NG
+              </div>
+            ) : (
+              <div className="status-indicator-box indicator--standby" style={{ fontSize: '1.5rem', padding: '0.6rem 1.5rem', borderRadius: '12px' }}>
+                <span className="indicator-beacon beacon--standby" style={{ width: '14px', height: '14px' }} />
+                STATUS: STANDBY
+              </div>
+            )}
           </div>
         </div>
-        <div className="kpi-footer">
-          <span className="kpi-subtext">Cumulative machine inspection results</span>
-        </div>
-      </div>
 
-      {/* 3. OK & NG Counts Card */}
-      <div className="card kpi-card">
-        <div className="kpi-header">
-          <span className="kpi-tag">Results Breakdown</span>
-          <span className="kpi-percent font-mono text-emerald">{yieldRate}% Yield</span>
-        </div>
-        <div className="kpi-quality-row">
-          <div className="quality-item quality--pass">
-            <span className="q-label">OK COUNT</span>
-            <span className="q-val font-mono">{okCount}</span>
-          </div>
-          <div className="quality-item quality--fail">
-            <span className="q-label">NG COUNT</span>
-            <span className="q-val font-mono">{ngCount}</span>
-          </div>
-        </div>
-        <div className="kpi-footer">
-          <span className="kpi-subtext">
-            {okCount} OK / {ngCount} NG recorded
-          </span>
-        </div>
-      </div>
-
-      {/* 4. Current / Latest Machine Result */}
-      <div className="card kpi-card">
-        <div className="kpi-header">
-          <span className="kpi-tag">Latest Inspection</span>
-          <span className="kpi-badge font-mono">OPC UA</span>
-        </div>
-        <div className="kpi-main">
-          {latest ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span
-                className={`badge badge--${latest.status === 'OK' ? 'success' : 'error'}`}
-                style={{ fontSize: '1.25rem', padding: '0.35rem 0.85rem' }}
-              >
-                {latest.status}
-              </span>
-              <span className="font-mono text-muted text-xs">
-                ID #{latest.id}
-              </span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', background: 'var(--color-surface-2)', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+          <div>
+            <div className="kpi-subtext" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Latest Barcode</div>
+            <div className="font-mono text-cyan" style={{ fontSize: '1.25rem', fontWeight: 600, wordBreak: 'break-all', marginTop: '0.2rem' }}>
+              {loading && !summary ? '...' : latestBarcode}
             </div>
-          ) : (
-            <span className="text-muted font-mono">Awaiting results...</span>
-          )}
+          </div>
+
+          <div>
+            <div className="kpi-subtext" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Inspection Result</div>
+            <div style={{ marginTop: '0.2rem' }}>
+              {latest ? (
+                <span className={`badge badge--${latest.status === 'OK' ? 'success' : 'error'}`} style={{ fontSize: '1rem', padding: '0.2rem 0.75rem' }}>
+                  {latest.status === 'OK' ? 'PASSED (OK)' : 'REJECTED (NG)'}
+                </span>
+              ) : (
+                <span className="text-muted font-mono">-</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="kpi-subtext" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>Processed Time</div>
+            <div className="font-mono" style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '0.2rem' }}>
+              {latest ? formatTime(latest.updatedAt) : '-'}
+            </div>
+          </div>
         </div>
-        <div className="kpi-footer">
-          <span className="kpi-subtext font-mono text-xs">
-            {latest
-              ? new Date(latest.timestamp).toLocaleString()
-              : 'No machine results yet'}
-          </span>
+      </section>
+
+      {/* 2. SUMMARY (5 KPI CARDS: Total, OK, NG, Pending, Processing) */}
+      <section className="kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        {/* Total Processed */}
+        <div className="card kpi-card">
+          <div className="kpi-header">
+            <span className="kpi-tag">Total Processed</span>
+            <span className="kpi-badge font-mono">DONE</span>
+          </div>
+          <div className="kpi-main">
+            <div className="progress-numbers">
+              <span className="current-num font-mono">{loading && !summary ? '...' : totalProcessed}</span>
+              <span className="target-num font-mono">items</span>
+            </div>
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext font-mono text-xs">{yieldRate}% Yield Rate</span>
+          </div>
         </div>
-      </div>
-    </section>
+
+        {/* OK Count */}
+        <div className="card kpi-card" style={{ borderLeft: '4px solid var(--color-emerald)' }}>
+          <div className="kpi-header">
+            <span className="kpi-tag" style={{ color: 'var(--color-emerald)' }}>OK Count</span>
+            <span className="kpi-badge font-mono badge--success">PASS</span>
+          </div>
+          <div className="kpi-main">
+            <div className="progress-numbers">
+              <span className="current-num font-mono text-emerald">{okCount}</span>
+            </div>
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext">Verified & Passed</span>
+          </div>
+        </div>
+
+        {/* NG Count */}
+        <div className="card kpi-card" style={{ borderLeft: '4px solid var(--color-rose)' }}>
+          <div className="kpi-header">
+            <span className="kpi-tag" style={{ color: 'var(--color-rose)' }}>NG Count</span>
+            <span className="kpi-badge font-mono badge--error">FAIL</span>
+          </div>
+          <div className="kpi-main">
+            <div className="progress-numbers">
+              <span className="current-num font-mono" style={{ color: 'var(--color-rose)' }}>{ngCount}</span>
+            </div>
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext">Failed / Not Good</span>
+          </div>
+        </div>
+
+        {/* Pending Count */}
+        <div className="card kpi-card" style={{ borderLeft: '4px solid var(--color-amber)' }}>
+          <div className="kpi-header">
+            <span className="kpi-tag" style={{ color: 'var(--color-amber)' }}>Pending</span>
+            <span className="kpi-badge font-mono badge--warning">QUEUE</span>
+          </div>
+          <div className="kpi-main">
+            <div className="progress-numbers">
+              <span className="current-num font-mono" style={{ color: 'var(--color-amber)' }}>{pendingCount}</span>
+            </div>
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext">Waiting in database</span>
+          </div>
+        </div>
+
+        {/* Processing Count */}
+        <div className="card kpi-card" style={{ borderLeft: '4px solid var(--color-cyan)' }}>
+          <div className="kpi-header">
+            <span className="kpi-tag" style={{ color: 'var(--color-cyan)' }}>Processing</span>
+            <span className="kpi-badge font-mono badge--info">PLC</span>
+          </div>
+          <div className="kpi-main">
+            <div className="progress-numbers">
+              <span className="current-num font-mono text-cyan">{processingCount}</span>
+            </div>
+          </div>
+          <div className="kpi-footer">
+            <span className="kpi-subtext">In-flight on machine</span>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 };
-
