@@ -1,10 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import healthRouter from './routes/health';
-import productionOrdersRouter from './routes/productionOrders';
-import productionRouter from './routes/production';
-import productsRouter from './routes/products';
-import ipcRouter from './routes/ipc';
+import machineResultsRouter from './routes/machineResults';
 
 const app: Application = express();
 
@@ -19,34 +16,25 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// Health check endpoints
 app.use('/health', healthRouter);
 app.use('/api/v1/health', healthRouter);
-app.use('/api/v1/production-orders', productionOrdersRouter);
-app.use('/api/v1/production', productionRouter);
-app.use('/api/v1/products', productsRouter);
-app.use('/api/v1/ipc', ipcRouter);
 
+// Machine Results endpoints (PoC Scope: OK / NG)
+app.use('/api/v1/machine-results', machineResultsRouter);
+
+// Root API listing
 app.get('/api/v1', (_req: Request, res: Response) => {
   res.json({
-    message: 'Sankei QR Traceability API',
-    version: '1.0.0',
+    message: 'Sankei Machine OK/NG Traceability API (PoC Scope)',
+    version: '2.0.0',
     status: 'running',
     endpoints: [
       'GET  /api/v1/health',
-      'GET  /api/v1/production-orders',
-      'POST /api/v1/production-orders',
-      'GET  /api/v1/production-orders/:id',
-      'POST /api/v1/production/start',
-      'POST /api/v1/production/stop',
-      'GET  /api/v1/production/current',
-      'POST /api/v1/products',
-      'GET  /api/v1/products',
-      'GET  /api/v1/products/:serialNumber',
-      'GET  /api/v1/products/:serialNumber/traceability',
-      'POST /api/v1/ipc/events',
-      'GET  /api/v1/ipc/next-product',
-      'POST /api/v1/ipc/inspection-result',
-      'POST /api/v1/ipc/status',
+      'POST /api/v1/machine-results',
+      'GET  /api/v1/machine-results',
+      'GET  /api/v1/machine-results/latest',
+      'GET  /api/v1/machine-results/summary',
     ],
   });
 });

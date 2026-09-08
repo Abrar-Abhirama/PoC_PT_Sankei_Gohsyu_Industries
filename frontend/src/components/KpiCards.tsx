@@ -1,126 +1,130 @@
 import React from 'react';
-import { CurrentProductionOrder, MachineInfo } from '../types';
+import { MachineResultStats } from '../types';
 
 interface KpiCardsProps {
-  order: CurrentProductionOrder | null;
-  machine: MachineInfo | null;
+  stats: MachineResultStats | null;
+  loading?: boolean;
 }
 
-export const KpiCards: React.FC<KpiCardsProps> = ({ order, machine }) => {
-  const machineStatus = machine?.status || (order ? 'RUNNING' : 'STOPPED');
-  const machineCode = machine?.machine_code || 'LINE-01';
+export const KpiCards: React.FC<KpiCardsProps> = ({ stats, loading }) => {
+  const latest = stats?.latestResult;
+  const machineCode = latest?.machineId || 'MACHINE-01';
+  const total = stats?.total ?? 0;
+  const okCount = stats?.okCount ?? 0;
+  const ngCount = stats?.ngCount ?? 0;
+  const yieldRate = stats?.yieldRate !== undefined ? stats.yieldRate.toFixed(1) : '100.0';
 
-  const target = order ? Number(order.target_quantity) : 0;
-  const produced = order ? Number(order.produced_quantity || 0) : 0;
-  const passed = order ? Number(order.pass_quantity || 0) : 0;
-  const failed = order ? Number(order.fail_quantity || 0) : 0;
-
-  const progressPercent = target > 0 ? Math.min(Math.round((produced / target) * 100), 100) : 0;
-  const yieldPercent =
-    passed + failed > 0 ? ((passed / (passed + failed)) * 100).toFixed(1) : '100.0';
+  const statusType = latest?.status; // 'OK' | 'NG' | undefined
 
   return (
     <section className="kpi-grid">
-      {/* 1. Machine Status Card */}
+      {/* 1. Machine Status Indicator */}
       <div className="card kpi-card">
         <div className="kpi-header">
-          <span className="kpi-tag">Station & Machine</span>
-          <span className={`status-dot dot--${machineStatus.toLowerCase()}`} />
+          <span className="kpi-tag">Machine Status Indicator</span>
+          <span className="kpi-badge font-mono">{machineCode}</span>
         </div>
         <div className="kpi-main">
-          <h2 className="kpi-title font-mono">{machineCode}</h2>
-          <span
-            className={`badge badge--${
-              machineStatus === 'RUNNING'
-                ? 'success'
-                : machineStatus === 'ERROR'
-                ? 'error'
-                : 'warning'
-            }`}
-          >
-            {machineStatus}
-          </span>
-        </div>
-        <div className="kpi-footer">
-          <span className="kpi-subtext">
-            {machine?.name || 'Main Production Assembly Line'}
-          </span>
-          {machine?.last_seen_at && (
-            <span className="kpi-subtext font-mono">
-              Heartbeat: {new Date(machine.last_seen_at).toLocaleTimeString()}
-            </span>
+          {statusType === 'OK' ? (
+            <div className="status-indicator-box indicator--ok">
+              <span className="indicator-beacon beacon--ok" />
+              STATUS: OK
+            </div>
+          ) : statusType === 'NG' ? (
+            <div className="status-indicator-box indicator--ng">
+              <span className="indicator-beacon beacon--ng" />
+              STATUS: NG
+            </div>
+          ) : (
+            <div className="status-indicator-box indicator--standby">
+              <span className="indicator-beacon beacon--standby" />
+              STANDBY
+            </div>
           )}
         </div>
-      </div>
-
-      {/* 2. Current Production Order Card */}
-      <div className="card kpi-card">
-        <div className="kpi-header">
-          <span className="kpi-tag">Active Production Order</span>
-          <span className="kpi-badge font-mono">
-            {order ? order.status : 'NO ORDER RUNNING'}
-          </span>
-        </div>
-        <div className="kpi-main">
-          <h2 className="kpi-title font-mono">
-            {order ? order.order_number : '—'}
-          </h2>
-        </div>
         <div className="kpi-footer">
-          <span className="kpi-product-name">
-            {order ? `${order.product_name} (${order.product_code})` : 'Standby mode — Start order'}
+          <span className="kpi-subtext font-mono">
+            {latest
+              ? `Signal at ${new Date(latest.timestamp).toLocaleTimeString()}`
+              : 'Awaiting OPC UA Client signal'}
           </span>
         </div>
       </div>
 
-      {/* 3. Production Progress Card */}
+      {/* 2. Total Results Card */}
       <div className="card kpi-card">
         <div className="kpi-header">
-          <span className="kpi-tag">Production Progress</span>
-          <span className="kpi-percent font-mono">{progressPercent}%</span>
+          <span className="kpi-tag">Total Results</span>
+          <span className="kpi-badge font-mono">INSPECTIONS</span>
         </div>
         <div className="kpi-main">
           <div className="progress-numbers">
-            <span className="current-num font-mono">{produced}</span>
-            <span className="divider">/</span>
-            <span className="target-num font-mono">{target} pcs</span>
+            <span className="current-num font-mono">
+              {loading && !stats ? '...' : total}
+            </span>
+            <span className="target-num font-mono">units</span>
           </div>
         </div>
-        <div className="progress-bar-container">
-          <div
-            className="progress-bar-fill"
-            style={{ width: `${progressPercent}%` }}
-          />
+        <div className="kpi-footer">
+          <span className="kpi-subtext">Cumulative machine inspection results</span>
+        </div>
+      </div>
+
+      {/* 3. OK & NG Counts Card */}
+      <div className="card kpi-card">
+        <div className="kpi-header">
+          <span className="kpi-tag">Results Breakdown</span>
+          <span className="kpi-percent font-mono text-emerald">{yieldRate}% Yield</span>
+        </div>
+        <div className="kpi-quality-row">
+          <div className="quality-item quality--pass">
+            <span className="q-label">OK COUNT</span>
+            <span className="q-val font-mono">{okCount}</span>
+          </div>
+          <div className="quality-item quality--fail">
+            <span className="q-label">NG COUNT</span>
+            <span className="q-val font-mono">{ngCount}</span>
+          </div>
         </div>
         <div className="kpi-footer">
           <span className="kpi-subtext">
-            Remaining: {Math.max(target - produced, 0)} units
+            {okCount} OK / {ngCount} NG recorded
           </span>
         </div>
       </div>
 
-      {/* 4. Inspection Quality Yield Card */}
+      {/* 4. Current / Latest Machine Result */}
       <div className="card kpi-card">
         <div className="kpi-header">
-          <span className="kpi-tag">Inspection Yield</span>
-          <span className="kpi-percent font-mono text-emerald">{yieldPercent}%</span>
+          <span className="kpi-tag">Latest Inspection</span>
+          <span className="kpi-badge font-mono">OPC UA</span>
         </div>
-        <div className="kpi-quality-row">
-          <div className="quality-item quality--pass">
-            <span className="q-label">PASS</span>
-            <span className="q-val font-mono">{passed}</span>
-          </div>
-          <div className="quality-item quality--fail">
-            <span className="q-label">FAIL</span>
-            <span className="q-val font-mono">{failed}</span>
-          </div>
+        <div className="kpi-main">
+          {latest ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span
+                className={`badge badge--${latest.status === 'OK' ? 'success' : 'error'}`}
+                style={{ fontSize: '1.25rem', padding: '0.35rem 0.85rem' }}
+              >
+                {latest.status}
+              </span>
+              <span className="font-mono text-muted text-xs">
+                ID #{latest.id}
+              </span>
+            </div>
+          ) : (
+            <span className="text-muted font-mono">Awaiting results...</span>
+          )}
         </div>
         <div className="kpi-footer">
-          <span className="kpi-subtext">
-            Total Inspected: {passed + failed} pcs
+          <span className="kpi-subtext font-mono text-xs">
+            {latest
+              ? new Date(latest.timestamp).toLocaleString()
+              : 'No machine results yet'}
           </span>
         </div>
       </div>
     </section>
   );
 };
+

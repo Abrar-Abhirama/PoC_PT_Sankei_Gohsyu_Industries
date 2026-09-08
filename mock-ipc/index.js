@@ -1,21 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Mock IPC Service for PT Sankei Gohsyu Industries QR Traceability System
+ * Mock IPC / OPC UA Client Simulator for PT Sankei Gohsyu Industries
+ * PoC Scope — Simplified OK / NG Machine Inspection
  * 
- * Simulates the C# IPC Service running on the Industrial PC by making REST API
- * calls to the backend service.
+ * Target Architecture:
+ *   PLC
+ *   → OPC UA Server
+ *   → OPC UA Client running on the Industrial PC (simulated by this script)
+ *   → Node.js Backend (POST /api/v1/machine-results)
+ *   → PostgreSQL (machine_results table)
+ *   → React Dashboard
  * 
- * Events simulated:
- * - PRODUCT_DETECTED
- * - PRINT_STARTED
- * - PRINT_COMPLETED
- * - QR_READ
- * - QR_READ_FAILED
- * - VISION_PASS
- * - VISION_FAIL
- * - PRODUCT_COMPLETED
- * - MACHINE_ERROR / EMERGENCY_STOP
+ * Domain Model:
+ *   {
+ *     "machineId": "MACHINE-01",
+ *     "status": "OK" | "NG",
+ *     "timestamp": "2026-09-08T10:30:00Z"
+ *   }
  */
 
 const http = require('http');
@@ -23,9 +25,9 @@ const readline = require('readline');
 
 const BACKEND_HOST = process.env.BACKEND_HOST || 'localhost';
 const BACKEND_PORT = parseInt(process.env.BACKEND_PORT || '3000', 10);
-const DEFAULT_MACHINE_ID = process.env.MACHINE_ID || 'LINE-01';
+const DEFAULT_MACHINE_ID = process.env.MACHINE_ID || 'MACHINE-01';
 
-// ANSI color helpers
+// ANSI color formatting
 const colors = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',
@@ -90,286 +92,78 @@ function apiRequest(method, path, body = null) {
 }
 
 /**
- * Ensure a production order is currently RUNNING
+ * Send machine inspection result (OK or NG) to backend
+ * 
+ * Payload:
+ * {
+ *   "machineId": "MACHINE-01",
+ *   "status": "OK" | "NG",
+ *   "timestamp": "2026-09-08T..."
+ * }
  */
-async function ensureRunningOrder() {
-  const current = await apiRequest('GET', '/production/current');
-  if (current.body?.data) {
-    return current.body.data;
+async function sendMachineResult(status, machineId = DEFAULT_MACHINE_ID) {
+  if (status !== 'OK' && status !== 'NG') {
+    throw new Error(`Invalid status: '${status}'. Allowed values: 'OK', 'NG'`);
   }
 
-  log(colors.yellow, '[ORDER]', 'No RUNNING order found. Auto-creating a mock production order...');
-  const orderNum = `PO-MOCK-${Date.now().toString().slice(-6)}`;
-  const createRes = await apiRequest('POST', '/production-orders', {
-    order_number: orderNum,
-    product_code: 'SANK-BKT-01',
-    product_name: 'Muffler Stay Bracket',
-    target_quantity: 100,
-  });
-
-  if (createRes.status !== 201) {
-    throw new Error(`Failed to create order: ${JSON.stringify(createRes.body)}`);
-  }
-
-  const orderId = createRes.body.data.id;
-  const startRes = await apiRequest('POST', '/production/start', { id: orderId });
-  if (startRes.status !== 200) {
-    throw new Error(`Failed to start order: ${JSON.stringify(startRes.body)}`);
-  }
-
-  log(colors.green, '[ORDER]', `Started mock order ${orderNum} (ID: ${orderId})`);
-  return startRes.body.data;
-}
-
-/**
- * Update machine status
- */
-async function updateMachineStatus(machineId, status, details = {}) {
-  const res = await apiRequest('POST', '/ipc/status', {
+  const timestamp = new Date().toISOString();
+  const payload = {
     machineId,
     status,
-    details,
-  });
-  if (res.status !== 200) {
-    log(colors.red, '[STATUS]', `Failed to update status: ${res.body?.error || res.status}`);
-  }
-  return res;
-}
+    timestamp,
+  };
 
-/**
- * Simulate Scenario 1: Normal Product Cycle (PASS)
- */
-async function simulateNormalCycle(machineId = DEFAULT_MACHINE_ID) {
-  log(colors.cyan, '─── [CYCLE START]', `Simulating Normal Production Cycle on ${machineId} ───`);
+  const isOk = status === 'OK';
+  log(
+    isOk ? colors.cyan : colors.magenta,
+    '[OPC-UA CLIENT]',
+    `Reading PLC tag -> Sending machine result: ${isOk ? colors.green + 'OK' : colors.red + 'NG'}${colors.reset} for ${colors.bright}${machineId}${colors.reset}`
+  );
 
-  await ensureRunningOrder();
-  await updateMachineStatus(machineId, 'RUNNING', { plcConnected: true, markerReady: true });
-
-  // 1. PRODUCT_DETECTED
-  log(colors.yellow, '[PLC]', '1. Proximity sensor: PRODUCT_DETECTED');
-  const detectRes = await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType: 'PRODUCT_DETECTED',
-  });
-
-  if (detectRes.status !== 201) {
-    log(colors.red, '[ERROR]', `PRODUCT_DETECTED failed: ${JSON.stringify(detectRes.body)}`);
-    return;
-  }
-
-  const serialNumber = detectRes.body.data?.serialNumber;
-  log(colors.green, '[BACKEND]', `Generated Serial Number: ${colors.bright}${serialNumber}${colors.reset}`);
-
-  // 2. PRINT_STARTED
-  await sleep(400);
-  log(colors.yellow, '[LASER]', `2. Laser marker triggered: PRINT_STARTED for ${serialNumber}`);
-  await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType: 'PRINT_STARTED',
-    serialNumber,
-    data: { laserPowerPercent: 95 },
-  });
-
-  // 3. PRINT_COMPLETED
-  await sleep(600);
-  log(colors.yellow, '[LASER]', `3. Marking finished: PRINT_COMPLETED`);
-  await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType: 'PRINT_COMPLETED',
-    serialNumber,
-    data: { markDurationMs: 620 },
-  });
-
-  // 4. QR_READ (SR-1000)
-  await sleep(400);
-  log(colors.cyan, '[SCANNER]', `4. Keyence SR-1000 reading QR: QR_READ`);
-  const qrRes = await apiRequest('POST', '/ipc/inspection-result', {
-    serialNumber,
-    inspectionType: 'QR_READ',
-    result: 'PASS',
-    machineId,
-    details: { reader: 'SR-1000', readTimeMs: 34, grade: 'A' },
-  });
-  log(colors.green, '[SCANNER]', `QR Read: PASS (Grade A)`);
-
-  // 5. VISION INSPECTION (IV3)
-  await sleep(400);
-  log(colors.cyan, '[VISION]', `5. Keyence IV3 checking geometry: VISION_PASS`);
-  const visionRes = await apiRequest('POST', '/ipc/inspection-result', {
-    serialNumber,
-    inspectionType: 'VISION',
-    result: 'PASS',
-    machineId,
-    details: { camera: 'IV3-G120', similarityScore: 99.2, ok: true },
-  });
-  log(colors.green, '[VISION]', `Vision Inspection: PASS`);
-
-  log(colors.green, '─── [CYCLE COMPLETE]', `Product ${serialNumber} marked and verified: PASS ✅\n`);
-}
-
-/**
- * Simulate Scenario 2: Defect - QR Code Read Failure
- */
-async function simulateQrFailCycle(machineId = DEFAULT_MACHINE_ID) {
-  log(colors.magenta, '─── [CYCLE START]', `Simulating QR Read Failure Cycle on ${machineId} ───`);
-
-  await ensureRunningOrder();
-  await updateMachineStatus(machineId, 'RUNNING');
-
-  // 1. PRODUCT_DETECTED
-  log(colors.yellow, '[PLC]', '1. Proximity sensor: PRODUCT_DETECTED');
-  const detectRes = await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType: 'PRODUCT_DETECTED',
-  });
-  const serialNumber = detectRes.body.data?.serialNumber;
-  log(colors.green, '[BACKEND]', `Generated Serial: ${serialNumber}`);
-
-  // 2. PRINT_STARTED & PRINT_COMPLETED
-  await sleep(300);
-  log(colors.yellow, '[LASER]', `2. PRINT_STARTED`);
-  await apiRequest('POST', '/ipc/events', { machineId, eventType: 'PRINT_STARTED', serialNumber });
-  await sleep(500);
-  log(colors.yellow, '[LASER]', `3. PRINT_COMPLETED (faint mark simulated)`);
-  await apiRequest('POST', '/ipc/events', { machineId, eventType: 'PRINT_COMPLETED', serialNumber });
-
-  // 4. QR_READ_FAILED
-  await sleep(400);
-  log(colors.red, '[SCANNER]', `4. Keyence SR-1000 failed to decode: QR_READ_FAILED`);
-  await apiRequest('POST', '/ipc/inspection-result', {
-    serialNumber,
-    inspectionType: 'QR_READ',
-    result: 'FAIL',
-    machineId,
-    details: { error: 'UNREADABLE_LOW_CONTRAST', grade: 'F', readTimeMs: 150 },
-  });
-
-  log(colors.red, '─── [CYCLE COMPLETE]', `Product ${serialNumber} status: FAIL ❌ (Defect logged)\n`);
-}
-
-/**
- * Simulate Scenario 3: Defect - Vision Inspection Failure
- */
-async function simulateVisionFailCycle(machineId = DEFAULT_MACHINE_ID) {
-  log(colors.magenta, '─── [CYCLE START]', `Simulating Vision Defect Cycle on ${machineId} ───`);
-
-  await ensureRunningOrder();
-  await updateMachineStatus(machineId, 'RUNNING');
-
-  // 1. Detect & Print
-  const detectRes = await apiRequest('POST', '/ipc/events', { machineId, eventType: 'PRODUCT_DETECTED' });
-  const serialNumber = detectRes.body.data?.serialNumber;
-  log(colors.green, '[BACKEND]', `Generated Serial: ${serialNumber}`);
-
-  await sleep(300);
-  await apiRequest('POST', '/ipc/events', { machineId, eventType: 'PRINT_STARTED', serialNumber });
-  await sleep(400);
-  await apiRequest('POST', '/ipc/events', { machineId, eventType: 'PRINT_COMPLETED', serialNumber });
-
-  // 2. QR Read PASS
-  await sleep(300);
-  log(colors.green, '[SCANNER]', `QR Read: PASS`);
-  await apiRequest('POST', '/ipc/inspection-result', {
-    serialNumber,
-    inspectionType: 'QR_READ',
-    result: 'PASS',
-    machineId,
-  });
-
-  // 3. Vision FAIL
-  await sleep(400);
-  log(colors.red, '[VISION]', `Keyence IV3 detected scratch/dent: VISION_FAIL`);
-  await apiRequest('POST', '/ipc/inspection-result', {
-    serialNumber,
-    inspectionType: 'VISION',
-    result: 'FAIL',
-    machineId,
-    details: { defectType: 'SURFACE_SCRATCH', confidence: 0.96 },
-  });
-
-  log(colors.red, '─── [CYCLE COMPLETE]', `Product ${serialNumber} status: FAIL ❌ (Surface scratch)\n`);
-}
-
-/**
- * Simulate Scenario 4: Machine Error / Emergency Stop
- */
-async function simulateMachineError(machineId = DEFAULT_MACHINE_ID) {
-  log(colors.red, '─── [ALARM]', `Simulating Machine Alarm on ${machineId} ───`);
-
-  log(colors.red, '[PLC]', 'Laser shutter interlock opened: MACHINE_ERROR');
-  await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType: 'MACHINE_ERROR',
-    data: {
-      errorCode: 'E-4012',
-      description: 'Laser safety interlock open',
-      severity: 'CRITICAL',
-    },
-  });
-
-  await updateMachineStatus(machineId, 'ERROR', {
-    errorCode: 'E-4012',
-    interlockOpen: true,
-  });
-
-  log(colors.red, '[MACHINE]', `Machine ${machineId} status changed to: ERROR ⚠️\n`);
-}
-
-/**
- * Simulate Scenario 5: Single Event
- */
-async function simulateSingleEvent(eventType, machineId = DEFAULT_MACHINE_ID, serialNumber = null) {
-  log(colors.cyan, '[EVENT]', `Sending single event '${eventType}' for ${machineId}...`);
-  const res = await apiRequest('POST', '/ipc/events', {
-    machineId,
-    eventType,
-    serialNumber,
-    data: { simulated: true, timestamp: new Date().toISOString() },
-  });
+  const res = await apiRequest('POST', '/machine-results', payload);
 
   if (res.status === 201) {
-    log(colors.green, '[SUCCESS]', `Event recorded (ID: ${res.body.data?.eventId})`);
+    const record = res.body?.data;
+    log(
+      colors.green,
+      '[BACKEND RESPONSE]',
+      `Recorded Result #${record.id} | Machine: ${record.machineId} | Status: ${isOk ? colors.green + 'OK ✅' : colors.red + 'NG ❌'}${colors.reset} | Time: ${record.timestamp}`
+    );
+    return record;
   } else {
     log(colors.red, '[ERROR]', `HTTP ${res.status}: ${res.body?.error || JSON.stringify(res.body)}`);
+    throw new Error(res.body?.error || `HTTP ${res.status}`);
   }
 }
 
 /**
  * Continuous Simulation Loop
+ * Periodically sends simulated inspection results (~88% OK, ~12% NG)
  */
 async function runContinuousSimulation(machineId = DEFAULT_MACHINE_ID, intervalMs = 2500) {
-  console.log(`\n${colors.bright}${colors.cyan}Starting Continuous Mock IPC Simulation on ${machineId}${colors.reset}`);
+  console.log(`\n${colors.bright}${colors.cyan}Starting Continuous OPC UA Client Simulation on ${machineId}${colors.reset}`);
   console.log(`${colors.gray}Interval: ${intervalMs}ms. Press Ctrl+C to stop.\n${colors.reset}`);
 
-  let count = 0;
-  let passCount = 0;
-  let failCount = 0;
+  let total = 0;
+  let okCount = 0;
+  let ngCount = 0;
 
-  const onExit = async () => {
-    console.log(`\n${colors.yellow}Stopping simulation... Total: ${count} (Pass: ${passCount}, Fail: ${failCount})${colors.reset}`);
+  const onExit = () => {
+    console.log(`\n${colors.yellow}Simulation stopped. Total: ${total} (OK: ${okCount}, NG: ${ngCount})${colors.reset}`);
     process.exit(0);
   };
   process.on('SIGINT', onExit);
   process.on('SIGTERM', onExit);
 
   while (true) {
-    count++;
+    total++;
     const roll = Math.random();
+    const status = roll < 0.88 ? 'OK' : 'NG';
 
     try {
-      if (roll < 0.88) {
-        // 88% PASS
-        await simulateNormalCycle(machineId);
-        passCount++;
-      } else if (roll < 0.94) {
-        // 6% QR Fail
-        await simulateQrFailCycle(machineId);
-        failCount++;
-      } else {
-        // 6% Vision Fail
-        await simulateVisionFailCycle(machineId);
-        failCount++;
-      }
+      await sendMachineResult(status, machineId);
+      if (status === 'OK') okCount++;
+      else ngCount++;
     } catch (err) {
       log(colors.red, '[EXCEPTION]', err.message);
     }
@@ -387,47 +181,41 @@ function showInteractiveMenu() {
     output: process.stdout,
   });
 
-  console.log(`\n${colors.bright}${colors.cyan}====================================================${colors.reset}`);
-  console.log(`${colors.bright}   Sankei Gohsyu Industries — Mock IPC Simulator   ${colors.reset}`);
-  console.log(`${colors.cyan}====================================================${colors.reset}`);
-  console.log(`Target Backend: http://${BACKEND_HOST}:${BACKEND_PORT}/api/v1`);
-  console.log(`Target Machine: ${DEFAULT_MACHINE_ID}\n`);
-  console.log('Select a simulation scenario:');
-  console.log('  1) Run 1 Normal Cycle (PASS)');
-  console.log('  2) Run 1 Defect Cycle (QR Read FAIL)');
-  console.log('  3) Run 1 Defect Cycle (Vision Inspection FAIL)');
-  console.log('  4) Simulate Machine Error (E-4012 Alarm)');
-  console.log('  5) Reset Machine to RUNNING');
-  console.log('  6) Run Continuous Simulation Loop (Press Ctrl+C to stop)');
+  console.log(`\n${colors.bright}${colors.cyan}======================================================${colors.reset}`);
+  console.log(`${colors.bright}   Sankei Gohsyu — OPC UA Client Simulator (PoC)    ${colors.reset}`);
+  console.log(`${colors.cyan}======================================================${colors.reset}`);
+  console.log(`Backend Target: http://${BACKEND_HOST}:${BACKEND_PORT}/api/v1/machine-results`);
+  console.log(`Target Machine: ${DEFAULT_MACHINE_ID}`);
+  console.log(`Data Model    : { machineId, status: "OK" | "NG", timestamp }\n`);
+  console.log('Select an option:');
+  console.log('  1) Send Machine Result: OK (PASS)');
+  console.log('  2) Send Machine Result: NG (FAIL / Defect)');
+  console.log('  3) Run Continuous Simulation Loop (Ctrl+C to stop)');
+  console.log('  4) View Current Machine Statistics');
   console.log('  0) Exit\n');
 
-  rl.question('Enter option [1-6, 0]: ', async (ans) => {
+  rl.question('Enter option [1-4, 0]: ', async (ans) => {
     rl.close();
     const choice = ans.trim();
 
     try {
       switch (choice) {
         case '1':
-          await simulateNormalCycle(DEFAULT_MACHINE_ID);
+          await sendMachineResult('OK', DEFAULT_MACHINE_ID);
           break;
         case '2':
-          await simulateQrFailCycle(DEFAULT_MACHINE_ID);
+          await sendMachineResult('NG', DEFAULT_MACHINE_ID);
           break;
         case '3':
-          await simulateVisionFailCycle(DEFAULT_MACHINE_ID);
-          break;
-        case '4':
-          await simulateMachineError(DEFAULT_MACHINE_ID);
-          break;
-        case '5':
-          await updateMachineStatus(DEFAULT_MACHINE_ID, 'RUNNING');
-          log(colors.green, '[STATUS]', `Machine ${DEFAULT_MACHINE_ID} status set to RUNNING`);
-          break;
-        case '6':
           await runContinuousSimulation(DEFAULT_MACHINE_ID, 2500);
           return;
+        case '4': {
+          const res = await apiRequest('GET', `/machine-results/stats?machineId=${DEFAULT_MACHINE_ID}`);
+          console.log('\nMachine Statistics:', JSON.stringify(res.body?.data, null, 2));
+          break;
+        }
         case '0':
-          console.log('Bye!');
+          console.log('Goodbye!');
           process.exit(0);
         default:
           console.log(colors.yellow + 'Invalid option.' + colors.reset);
@@ -436,7 +224,6 @@ function showInteractiveMenu() {
       log(colors.red, '[ERROR]', err.message);
     }
 
-    // Return to menu
     showInteractiveMenu();
   });
 }
@@ -449,23 +236,21 @@ async function main() {
     console.log(`
 Usage: node mock-ipc/index.js [options]
 
+Architecture:
+  PLC -> OPC UA Server -> OPC UA Client (mock-ipc) -> Node.js Backend -> PostgreSQL -> React Dashboard
+
 Options:
-  --cycle, --pass       Run a single normal production cycle (PASS)
-  --fail-qr             Run a cycle with QR Read failure (FAIL)
-  --fail-vision         Run a cycle with Vision Inspection failure (FAIL)
-  --error               Simulate a machine error / alarm
-  --status <status>     Update machine status (RUNNING, STOPPED, ERROR)
+  --ok                  Send a machine result with status: "OK"
+  --ng                  Send a machine result with status: "NG"
   --continuous, -c      Run continuous simulation loop
   --interval <ms>       Loop interval in ms (default: 2500)
-  --machine <id>        Machine ID to target (default: LINE-01)
-  --event <type>        Send a specific single machine event
+  --machine <id>        Machine ID to target (default: MACHINE-01)
   --help, -h            Show this help text
 
 Examples:
-  node mock-ipc/index.js --cycle
-  node mock-ipc/index.js --fail-qr
+  node mock-ipc/index.js --ok
+  node mock-ipc/index.js --ng
   node mock-ipc/index.js --continuous --interval 2000
-  node mock-ipc/index.js --event MACHINE_ERROR
 `);
     process.exit(0);
   }
@@ -473,36 +258,13 @@ Examples:
   const machineIndex = args.indexOf('--machine');
   const machineId = machineIndex !== -1 && args[machineIndex + 1] ? args[machineIndex + 1] : DEFAULT_MACHINE_ID;
 
-  if (args.includes('--cycle') || args.includes('--pass')) {
-    await simulateNormalCycle(machineId);
+  if (args.includes('--ok') || args.includes('--pass')) {
+    await sendMachineResult('OK', machineId);
     process.exit(0);
   }
 
-  if (args.includes('--fail-qr')) {
-    await simulateQrFailCycle(machineId);
-    process.exit(0);
-  }
-
-  if (args.includes('--fail-vision')) {
-    await simulateVisionFailCycle(machineId);
-    process.exit(0);
-  }
-
-  if (args.includes('--error')) {
-    await simulateMachineError(machineId);
-    process.exit(0);
-  }
-
-  const statusIdx = args.indexOf('--status');
-  if (statusIdx !== -1 && args[statusIdx + 1]) {
-    await updateMachineStatus(machineId, args[statusIdx + 1].toUpperCase());
-    log(colors.green, '[STATUS]', `Machine ${machineId} status updated to ${args[statusIdx + 1].toUpperCase()}`);
-    process.exit(0);
-  }
-
-  const eventIdx = args.indexOf('--event');
-  if (eventIdx !== -1 && args[eventIdx + 1]) {
-    await simulateSingleEvent(args[eventIdx + 1].toUpperCase(), machineId);
+  if (args.includes('--ng') || args.includes('--fail')) {
+    await sendMachineResult('NG', machineId);
     process.exit(0);
   }
 
@@ -513,7 +275,7 @@ Examples:
     return;
   }
 
-  // If no CLI args provided, launch interactive menu
+  // Launch interactive menu if no arguments
   showInteractiveMenu();
 }
 

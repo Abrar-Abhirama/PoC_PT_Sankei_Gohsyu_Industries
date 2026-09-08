@@ -1,18 +1,39 @@
-# PoC — Local QR Traceability System
+# PoC — Machine OK/NG Traceability System
 ### PT Sankei Gohsyu Industries
 
-A local, on-premise QR traceability system PoC for monitoring the production and inspection process of manufactured products.
+A local, on-premise industrial machine inspection traceability system PoC for monitoring machine OK/NG results.
+
+---
+
+## Target Architecture
+
+```
+PLC
+  ↓
+OPC UA Server
+  ↓
+OPC UA Client (simulated by mock-ipc)
+  ↓
+Node.js Backend
+  ↓
+PostgreSQL
+  ↓
+React Dashboard
+```
+
+> **Catatan Arsitektur:** PLC tidak berkomunikasi langsung dengan Node.js Backend. OPC UA Client bertugas membaca nilai dari PLC/OPC UA Server dan mengonversinya menjadi HTTP REST request JSON sederhana (`{ machineId, status: "OK" | "NG", timestamp }`) ke Backend. Komunikasi OPC UA dan PLC fisik belum diimplementasikan pada tahap PoC ini.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React + TypeScript (Vite) |
-| Backend | Node.js + TypeScript + Express.js |
-| Database | PostgreSQL 16 |
-| Containerization | Docker + Docker Compose |
+| Layer | Technology | Port |
+|---|---|---|
+| **Frontend** | React 18 + TypeScript (Vite) | `5173` |
+| **Backend** | Node.js + TypeScript + Express.js | `3000` |
+| **Database** | PostgreSQL 16 | `5432` |
+| **Simulator** | Node.js Mock OPC UA Client | - |
+| **Containers** | Docker + Docker Compose | - |
 
 ---
 
@@ -20,10 +41,29 @@ A local, on-premise QR traceability system PoC for monitoring the production and
 
 ```
 .
-├── frontend/          # React + TypeScript (Vite) — port 5173
-├── backend/           # Node.js + TypeScript + Express — port 3000
+├── frontend/          # React + TypeScript (Vite) dashboard
+│   └── src/
+│       ├── components/
+│       │   ├── KpiCards.tsx            # KPI Cards (Total, OK, NG, Yield, Station)
+│       │   └── RecentResultsTable.tsx  # Live stream of machine inspection results
+│       ├── App.tsx                     # Main dashboard layout with auto-sync
+│       ├── types.ts                    # MachineResult & MachineResultStats types
+│       └── main.tsx
+├── backend/           # Node.js + TypeScript + Express API
+│   └── src/
+│       ├── config/                     # Database pool & migration runner
+│       ├── routes/
+│       │   ├── health.ts               # Health check endpoint
+│       │   └── machineResults.ts       # POST/GET machine results & summary
+│       ├── types/
+│       │   └── machineResult.ts        # Domain model interfaces
+│       ├── app.ts                      # Express app configuration
+│       └── index.ts                    # Server entry point
 ├── database/
-│   └── init/          # SQL init scripts (run once on first start)
+│   └── init/
+│       └── 01_schema.sql               # Database schema (machine_results)
+├── mock-ipc/
+│   └── index.js                        # OPC UA Client simulator (CLI / interactive)
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -35,260 +75,169 @@ A local, on-premise QR traceability system PoC for monitoring the production and
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
-- Git
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with Docker Compose)
+- Node.js (v18+)
 
-### 1. Clone the repository
-
-```bash
-git clone <repository-url>
-cd PoC_PT_Sankei_Gohsyu_Industries
-```
-
-### 2. Configure environment variables
+### 1. Build and Start All Services
 
 ```bash
-cp .env.example .env
+docker compose up --build -d
 ```
 
-Edit `.env` if you need to change default ports or credentials. The defaults work out of the box.
-
-### 3. Build and start all services
-
+Check status:
 ```bash
-docker-compose up --build
+docker compose ps
 ```
-
-This command will:
-1. Build the frontend and backend Docker images
-2. Start PostgreSQL and wait for it to be healthy
-3. Start the backend (connects to PostgreSQL)
-4. Start the frontend (connects to the backend)
-
-### 4. Access the application
 
 | Service | URL |
 |---|---|
-| **Frontend** | http://localhost:5173 |
-| **Backend API** | http://localhost:3000 |
-| **Health Check** | http://localhost:3000/health |
-| **PostgreSQL** | `localhost:5432` (use a DB client) |
+| **React Dashboard** | http://localhost:5173 |
+| **Backend API** | http://localhost:3000/api/v1 |
+| **Health Check** | http://localhost:3000/api/v1/health |
+| **PostgreSQL** | `localhost:5432` (db: `sankei_db`, user: `sankei_user`) |
 
 ---
 
-## Commands Reference
+## 🤖 Mock OPC UA Client Simulator
 
-### 1. 🐳 Docker Commands (Full Stack — Recommended)
-
-Run all services together using Docker Compose:
+Komponen simulator ini mensimulasikan **OPC UA Client** yang berjalan di Industrial PC, mengirimkan hasil inspeksi mesin (**OK** / **NG**) ke Backend tanpa memerlukan PLC fisik:
 
 ```bash
-# Build images and start all containers (first time / after dependency updates)
-docker compose up --build
+# 1. Kirim hasil inspeksi OK:
+node mock-opc-client/index.js --ok
 
-# Start all containers in background (detached mode)
-docker compose up -d
+# 2. Kirim hasil inspeksi NG (Defect):
+node mock-opc-client/index.js --ng
 
-# Check status of running containers
-docker compose ps
+# 3. Jalankan loop periodik otomatis (default interval: 2000ms, Ctrl+C untuk berhenti):
+node mock-opc-client/index.js --periodic
 
-# View logs (real-time streaming):
-docker compose logs -f             # All services
-docker compose logs -f frontend    # Frontend only
-docker compose logs -f backend     # Backend only
-docker compose logs -f postgres    # PostgreSQL only
+# 4. Tentukan target mesin (default: MACHINE-01):
+node mock-opc-client/index.js --ok --machine LINE-02
 
-# Restart a specific service:
-docker compose restart frontend
-docker compose restart backend
-docker compose restart postgres
+# 5. Tentukan target backend URL melalui environment variable:
+BACKEND_URL=http://localhost:3000/api/v1 node mock-opc-client/index.js --ok
 
-# Stop all containers (preserves database volume)
-docker compose down
-
-# Stop all containers AND wipe database volume (clean reset)
-docker compose down -v
-
-# Rebuild images without starting
-docker compose build
-
-# Start a specific service only:
-docker compose up postgres
-docker compose up backend
-docker compose up frontend
+# 6. Buka menu interaktif di terminal:
+node mock-opc-client/index.js
 ```
 
 ---
 
-### 2. ⚛️ Frontend Commands (Standalone / Local Node.js)
-
-Run frontend directly on host machine without Docker:
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start Vite dev server with hot reload (http://localhost:5173)
-npm run dev
-
-# Check TypeScript types without building
-npm run typecheck
-
-# Build for production
-npm run build
-
-# Preview production build locally
-npm run preview
-```
-
----
-
-### 3. 🟢 Backend Commands (Standalone / Local Node.js)
-
-Run backend directly on host machine (*requires PostgreSQL running on localhost:5432*):
-
-```bash
-cd backend
-
-# Install dependencies
-npm install
-
-# Start dev server with hot reload via ts-node-dev (http://localhost:3000)
-npm run dev
-
-# Check TypeScript types without building
-npm run typecheck
-
-# Compile TypeScript to dist/ (JavaScript)
-npm run build
-
-# Run compiled production build
-npm start
-```
-
----
-
-### 4. 🐘 Database Commands (PostgreSQL Access)
-
-```bash
-# Access psql shell inside the running Docker container:
-docker exec -it sankei_postgres psql -U sankei_user -d sankei_db
-
-# Or connect from host machine (if psql is installed locally):
-psql -h localhost -p 5432 -U sankei_user -d sankei_db
-
-# Quick query test from terminal:
-docker exec -it sankei_postgres psql -U sankei_user -d sankei_db -c "\dt"
-```
-
----
-
-### 5. 🤖 Mock IPC Commands (Simulasi Hardware & PLC)
-
-Digunakan untuk development dan testing tanpa membutuhkan PLC KV-8000 atau hardware Keyence fisik:
-
-```bash
-# Buka Menu Interaktif (Interactive CLI):
-node mock-ipc/index.js
-
-# Jalankan 1 siklus produksi lengkap (PASS):
-node mock-ipc/index.js --cycle
-
-# Simulasi kegagalan pembacaan QR Code (QR Read FAIL):
-node mock-ipc/index.js --fail-qr
-
-# Simulasi kegagalan inspeksi visual (Vision FAIL):
-node mock-ipc/index.js --fail-vision
-
-# Simulasi alarm / emergency stop mesin:
-node mock-ipc/index.js --error
-
-# Reset status mesin kembali ke RUNNING:
-node mock-ipc/index.js --status RUNNING
-
-# Jalankan simulasi kontinu berulang tiap 2.5 detik (Ctrl+C untuk berhenti):
-node mock-ipc/index.js --continuous
-
-# Jalankan dari folder backend via npm:
-cd backend
-npm run mock:ipc             # Menu interaktif
-npm run mock:ipc:cycle       # 1 siklus normal
-npm run mock:ipc:continuous  # Loop kontinu
-```
-
----
-
-## API
+## REST API Specification
 
 Base URL: `http://localhost:3000/api/v1`
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/health` | GET | Health check — confirms API and DB connectivity |
-| `/production-orders` | GET / POST | List and create production orders |
-| `/production-orders/:id` | GET | Retrieve specific production order by ID |
-| `/production/start` | POST | Start an active production run |
-| `/production/stop` | POST | Stop/complete the running production order |
-| `/production/current` | GET | Get the currently active production order and live metrics |
-| `/products` | GET / POST | Register products and query serial numbers |
-| `/products/:serialNumber` | GET | Product details by unique QR serial number |
-| `/ipc/status` | POST | IPC machine heartbeat and status updates |
-| `/ipc/events` | POST | Forward machine events (PRODUCT_DETECTED, PRINT_STARTED, etc.) |
-| `/ipc/next-product` | GET | Retrieve next product to be marked |
-| `/ipc/inspection-result` | POST | Ingest inspection results (QR_READ, VISION) from Keyence devices |
+### 1. Ingest Machine Result
+- **Method:** `POST`
+- **Path:** `/api/v1/machine-results`
+- **Request Body:**
+  ```json
+  {
+    "machineId": "MACHINE-01",
+    "status": "OK",
+    "timestamp": "2026-09-08T10:30:00Z"
+  }
+  ```
+  *(Status wajib bernilai `"OK"` atau `"NG"`. `timestamp` opsional, default ke waktu server saat ini)*
+- **Response (201 Created):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "machineId": "MACHINE-01",
+      "status": "OK",
+      "timestamp": "2026-09-08T10:30:00.000Z",
+      "createdAt": "2026-09-08T10:30:01.234Z"
+    }
+  }
+  ```
 
----
+### 2. Get Recent Machine Results
+- **Method:** `GET`
+- **Path:** `/api/v1/machine-results?limit=50&machineId=MACHINE-01`
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "data": [
+      {
+        "id": 1,
+        "machineId": "MACHINE-01",
+        "status": "OK",
+        "timestamp": "2026-09-08T10:30:00.000Z",
+        "createdAt": "2026-09-08T10:30:01.234Z"
+      }
+    ],
+    "total": 1
+  }
+  ```
 
-## 🤖 Mock IPC Simulator (Panduan Lengkap)
+### 3. Get Latest Machine Result
+- **Method:** `GET`
+- **Path:** `/api/v1/machine-results/latest?machineId=MACHINE-01`
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "id": 1,
+      "machineId": "MACHINE-01",
+      "status": "OK",
+      "timestamp": "2026-09-08T10:30:00.000Z",
+      "createdAt": "2026-09-08T10:30:01.234Z"
+    }
+  }
+  ```
 
-Simulator Mock IPC (`mock-ipc/index.js`) bertindak sebagai **C# IPC Service** yang mengirimkan event REST/JSON ke backend sesuai kontrak API yang sesungguhnya.
+### 4. Get Machine Results Summary (Stats)
+- **Method:** `GET`
+- **Path:** `/api/v1/machine-results/summary`
+- **Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "total": 100,
+      "okCount": 88,
+      "ngCount": 12,
+      "yieldRate": 88.0,
+      "latestResult": { ... }
+    }
+  }
+  ```
 
-### Skenario yang Didukung
-
-| Parameter CLI | Deskripsi Skenario | Hasil Produk |
-|---|---|---|
-| *(tanpa parameter)* | Menampilkan menu interaktif bernomor di terminal | Sesuai pilihan |
-| `--cycle` / `--pass` | `PRODUCT_DETECTED` ➔ `PRINT_STARTED` ➔ `PRINT_COMPLETED` ➔ `QR_READ` (PASS) ➔ `VISION_PASS` | **PASS** |
-| `--fail-qr` | Simulasi barcode buram / tidak terbaca oleh SR-1000 (`QR_READ_FAILED`) | **FAIL** |
-| `--fail-vision` | QR terbaca sukses, tetapi kamera IV3 mendeteksi goresan cacat (`VISION_FAIL`) | **FAIL** |
-| `--error` | Simulasi interlock keselamatan terbuka / alarm mesin (`MACHINE_ERROR`) | Mesin ➔ **ERROR** |
-| `--status <STATUS>` | Update status mesin (`RUNNING`, `STOPPED`, `ERROR`, `UNKNOWN`) | Update tabel `machines` |
-| `--continuous`, `-c` | Loop otomatis memproduksi barang terus-menerus (88% PASS, 6% QR Fail, 6% Vision Fail) | Streaming real-time |
-| `--interval <ms>` | Mengatur jeda waktu antar produk pada mode continuous (default: `2500` ms) | - |
-| `--machine <ID>` | Menentukan mesin target (default: `LINE-01`) | - |
-| `--event <TYPE>` | Mengirim single event langsung (misal: `PRODUCT_COMPLETED`, `EMERGENCY_STOP`) | - |
-
-> 💡 **Fitur Cerdas**: Jika simulator dijalankan saat tidak ada production order yang berstatus `RUNNING`, simulator akan **otomatis membuat dan menjalankan order sementara** (`PO-MOCK-XXXXXX`) sehingga proses pengujian dapat berjalan tanpa setup manual!
+### 5. System Health Check
+- **Method:** `GET`
+- **Path:** `/api/v1/health`
+- **Response (200 OK):**
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2026-09-08T10:30:00.000Z",
+    "database": "connected"
+  }
+  ```
 
 ---
 
 ## Database
 
-PostgreSQL runs on port **5432** with the following defaults (from `.env.example`):
+PostgreSQL berjalan di port **5432** (service `postgres`).
 
-| Setting | Value |
-|---|---|
-| Database | `sankei_db` |
-| User | `sankei_user` |
-| Password | `sankei_password` |
+### Tabel Tunggal: `machine_results`
 
-Data is persisted in a Docker named volume (`sankei_postgres_data`). It survives container restarts but is removed with `docker-compose down -v`.
+```sql
+CREATE TABLE machine_results (
+    id         SERIAL PRIMARY KEY,
+    machine_id VARCHAR(50) NOT NULL,
+    status     VARCHAR(10) NOT NULL CHECK (status IN ('OK', 'NG')),
+    timestamp  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-### Schema
-
-The initial schema creates the following tables:
-
-- `production_orders`
-- `products`
-- `machine_events`
-- `inspections`
-- `machines`
-
----
-
-## Environment Variables
-
-See [`.env.example`](.env.example) for all available configuration options.
-
+CREATE INDEX idx_machine_results_machine_id ON machine_results(machine_id);
+CREATE INDEX idx_machine_results_status     ON machine_results(status);
+CREATE INDEX idx_machine_results_timestamp  ON machine_results(timestamp DESC);
+```

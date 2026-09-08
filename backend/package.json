@@ -8,11 +8,13 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
+    "test": "node --test",
     "migrate:up": "ts-node-dev --transpile-only src/scripts/migrate.ts up",
     "migrate:down": "ts-node-dev --transpile-only src/scripts/migrate.ts down",
     "mock:ipc": "node ../mock-ipc/index.js",
-    "mock:ipc:cycle": "node ../mock-ipc/index.js --cycle",
-    "mock:ipc:continuous": "node ../mock-ipc/index.js --continuous"
+    "mock:opc:ok": "node ../mock-opc-client/index.js --ok",
+    "mock:opc:ng": "node ../mock-opc-client/index.js --ng",
+    "mock:opc:periodic": "node ../mock-opc-client/index.js --periodic"
   },
   "dependencies": {
     "cors": "^2.8.5",

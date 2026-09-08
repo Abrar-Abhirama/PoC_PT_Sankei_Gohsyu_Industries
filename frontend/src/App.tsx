@@ -1,79 +1,66 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  CurrentProductionOrder,
-  MachineInfo,
-  MachineEvent,
-  ProductItem,
-  ProductTraceability,
-} from './types';
+import { MachineResult, MachineResultStats } from './types';
 import { KpiCards } from './components/KpiCards';
-import { TraceabilitySearch } from './components/TraceabilitySearch';
-import { TraceabilityModal } from './components/TraceabilityModal';
 import { RecentResultsTable } from './components/RecentResultsTable';
-import { RecentEventsFeed } from './components/RecentEventsFeed';
 
 export default function App() {
-  // Main state
-  const [currentOrder, setCurrentOrder] = useState<CurrentProductionOrder | null>(null);
-  const [machine, setMachine] = useState<MachineInfo | null>(null);
-  const [recentProducts, setRecentProducts] = useState<ProductItem[]>([]);
-  const [recentEvents, setRecentEvents] = useState<MachineEvent[]>([]);
-  
-  // App status
+  // Machine Results State
+  const [stats, setStats] = useState<MachineResultStats | null>(null);
+  const [results, setResults] = useState<MachineResult[]>([]);
+
+  // System & Connection State
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
-
-  // Traceability Modal State
-  const [selectedTraceability, setSelectedTraceability] = useState<ProductTraceability | null>(null);
-  const [traceabilityLoading, setTraceabilityLoading] = useState(false);
-  const [traceabilityError, setTraceabilityError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Polling ref
   const timerRef = useRef<number | null>(null);
 
   /**
-   * Fetch all dashboard data concurrently
+   * Fetch all dashboard data concurrently from Node.js backend
    */
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [orderRes, statusRes, productsRes, eventsRes, healthRes] = await Promise.allSettled([
-        fetch('/api/v1/production/current').then((r) => r.json()),
-        fetch('/api/v1/ipc/status?machineId=LINE-01').then((r) => r.json()),
-        fetch('/api/v1/products').then((r) => r.json()),
-        fetch('/api/v1/ipc/events?limit=25').then((r) => r.json()),
-        fetch('/api/v1/health').then((r) => r.json()),
+      const [summaryRes, resultsRes, healthRes] = await Promise.all([
+        fetch('/api/v1/machine-results/summary').then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status} fetching summary`);
+          return r.json();
+        }),
+        fetch('/api/v1/machine-results?limit=50').then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status} fetching results`);
+          return r.json();
+        }),
+        fetch('/api/v1/health')
+          .then(async (r) => {
+            if (!r.ok) return { status: 'error' };
+            return r.json();
+          })
+          .catch(() => ({ status: 'error' })),
       ]);
 
-      if (healthRes.status === 'fulfilled' && healthRes.value?.status === 'ok') {
+      // Set Backend Health status
+      if (healthRes.status === 'ok') {
         setIsBackendHealthy(true);
       } else {
         setIsBackendHealthy(false);
       }
 
-      if (orderRes.status === 'fulfilled' && orderRes.value?.data) {
-        setCurrentOrder(orderRes.value.data);
-      } else if (orderRes.status === 'fulfilled' && orderRes.value?.data === null) {
-        setCurrentOrder(null);
+      // Set Stats & Results
+      if (summaryRes?.success && summaryRes.data) {
+        setStats(summaryRes.data);
+      }
+      if (resultsRes?.success && Array.isArray(resultsRes.data)) {
+        setResults(resultsRes.data);
       }
 
-      if (statusRes.status === 'fulfilled' && statusRes.value?.data) {
-        setMachine(statusRes.value.data);
-      }
-
-      if (productsRes.status === 'fulfilled' && Array.isArray(productsRes.value?.data)) {
-        setRecentProducts(productsRes.value.data);
-      }
-
-      if (eventsRes.status === 'fulfilled' && Array.isArray(eventsRes.value?.data)) {
-        setRecentEvents(eventsRes.value.data);
-      }
-
+      setApiError(null);
       setLastRefreshed(new Date());
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown communication error';
+      console.error('[Dashboard] Error fetching backend data:', msg);
+      setApiError(`Could not reach backend API (${msg}). Is the Node.js backend running on port 3000?`);
       setIsBackendHealthy(false);
     } finally {
       setLoading(false);
@@ -93,38 +80,6 @@ export default function App() {
     };
   }, [autoRefresh, fetchDashboardData]);
 
-  /**
-   * Fetch Traceability for a specific product serial number
-   */
-  const handleInspectProduct = async (serialNumber: string) => {
-    setIsModalOpen(true);
-    setTraceabilityLoading(true);
-    setTraceabilityError(null);
-    setSelectedTraceability(null);
-
-    try {
-      const res = await fetch(`/api/v1/products/${encodeURIComponent(serialNumber)}/traceability`);
-      const json = await res.json();
-
-      if (res.ok && json.data) {
-        setSelectedTraceability(json.data);
-      } else {
-        setTraceabilityError(json.error || `Failed to find product ${serialNumber}`);
-      }
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Network error';
-      setTraceabilityError(`Network error inspecting product: ${errorMsg}`);
-    } finally {
-      setTraceabilityLoading(false);
-    }
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedTraceability(null);
-    setTraceabilityError(null);
-  };
-
   return (
     <div className="app-layout">
       {/* Top Navbar */}
@@ -133,7 +88,7 @@ export default function App() {
           <div className="brand-hexagon">⬡</div>
           <div>
             <div className="brand-company">PT SANKEI GOHSYU INDUSTRIES</div>
-            <h1 className="brand-title">QR Traceability System — Production Dashboard</h1>
+            <h1 className="brand-title">Machine OK/NG Inspection Dashboard — PoC</h1>
           </div>
         </div>
 
@@ -172,48 +127,47 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Dashboard Workspace */}
+      {/* Main Dashboard Content */}
       <main className="dashboard-content">
-        {/* Row 1: KPI Summary Metric Cards */}
-        <KpiCards order={currentOrder} machine={machine} />
+        {/* API Error Notification Banner */}
+        {apiError && (
+          <div className="api-error-banner">
+            <div className="error-banner-content">
+              <span className="error-icon">⚠️</span>
+              <div>
+                <strong>Backend Communication Error:</strong> {apiError}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchDashboardData()}
+              className="retry-btn"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
 
-        {/* Row 2: Traceability Search Bar */}
-        <TraceabilitySearch
-          onSearch={handleInspectProduct}
-          recentProducts={recentProducts}
-          searching={traceabilityLoading}
-        />
+        {/* Row 1: KPI Cards with Machine Status Indicator & OK/NG Counts */}
+        <KpiCards stats={stats} loading={loading} />
 
-        {/* Row 3: Split View - Recent Results & Live Events Feed */}
-        <div className="dashboard-split-grid">
+        {/* Row 2: Live Machine Results Table */}
+        <div style={{ marginTop: '1.25rem' }}>
           <RecentResultsTable
-            products={recentProducts}
-            onSelectProduct={handleInspectProduct}
+            results={results}
             loading={loading}
-          />
-          <RecentEventsFeed
-            events={recentEvents}
-            onSelectProduct={handleInspectProduct}
-            loading={loading}
+            apiError={apiError}
+            onRetry={fetchDashboardData}
           />
         </div>
       </main>
 
       {/* Footer */}
       <footer className="dashboard-footer font-mono">
-        <span>PoC Phase — PT Sankei Gohsyu Industries</span>
+        <span>PoC Architecture: PLC → OPC UA Server → OPC UA Client → Node.js Backend → PostgreSQL → React Dashboard</span>
         <span>Last synced: {lastRefreshed.toLocaleTimeString()}</span>
       </footer>
-
-      {/* Traceability Inspection Modal */}
-      {isModalOpen && (
-        <TraceabilityModal
-          data={selectedTraceability}
-          loading={traceabilityLoading}
-          error={traceabilityError}
-          onClose={closeModal}
-        />
-      )}
     </div>
   );
 }
+

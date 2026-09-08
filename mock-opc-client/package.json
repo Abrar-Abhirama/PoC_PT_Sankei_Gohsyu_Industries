@@ -1,0 +1,22 @@
+{
+  "name": "mock-opc-client",
+  "version": "1.0.0",
+  "description": "Mock OPC UA Client simulating Industrial PC sending machine inspection results (OK/NG) to Node.js backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "send:ok": "node index.js --ok",
+    "send:ng": "node index.js --ng",
+    "periodic": "node index.js --periodic",
+    "continuous": "node index.js --continuous"
+  },
+  "keywords": [
+    "opc-ua",
+    "simulator",
+    "mock",
+    "traceability",
+    "industrial-pc"
+  ],
+  "author": "PT Sankei Gohsyu Industries",
+  "license": "ISC"
+}

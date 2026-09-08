@@ -1,88 +1,100 @@
 import React from 'react';
-import { ProductItem } from '../types';
+import { MachineResult } from '../types';
 
 interface RecentResultsTableProps {
-  products: ProductItem[];
-  onSelectProduct: (serialNumber: string) => void;
+  results: MachineResult[];
   loading: boolean;
+  apiError?: string | null;
+  onRetry?: () => void;
 }
 
 export const RecentResultsTable: React.FC<RecentResultsTableProps> = ({
-  products,
-  onSelectProduct,
+  results,
   loading,
+  apiError,
+  onRetry,
 }) => {
   return (
     <div className="card table-card">
       <div className="card-header-row">
         <div>
-          <h3 className="card-heading">📦 Recent Production Results</h3>
-          <p className="card-subheading">Latest products processed and marked on the line</p>
+          <h3 className="card-heading">📋 Recent Machine Results (OK / NG)</h3>
+          <p className="card-subheading">Live stream of inspection results received from the OPC UA Client</p>
         </div>
-        <span className="count-pill font-mono">{products.length} records</span>
+        <span className="count-pill font-mono">{results.length} records</span>
       </div>
 
       <div className="table-responsive">
         <table className="custom-table">
           <thead>
             <tr>
-              <th>Serial Number</th>
-              <th>Order</th>
-              <th>Result Status</th>
-              <th>Timestamp</th>
-              <th style={{ textAlign: 'right' }}>Action</th>
+              <th style={{ width: '80px' }}>ID</th>
+              <th>Machine ID</th>
+              <th>Status</th>
+              <th>Timestamp (ISO-8601)</th>
+              <th style={{ textAlign: 'right' }}>Recorded At</th>
             </tr>
           </thead>
           <tbody>
-            {loading && products.length === 0 ? (
+            {loading && results.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center py-6">
-                  <span className="spinner" /> Loading products...
+                  <span className="spinner" /> Loading machine results from backend...
                 </td>
               </tr>
-            ) : products.length === 0 ? (
+            ) : apiError && results.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-6">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ color: '#fca5a5', fontSize: '0.9rem' }}>
+                      ⚠️ Unable to load machine results: {apiError}
+                    </span>
+                    {onRetry && (
+                      <button type="button" onClick={onRetry} className="retry-btn">
+                        Retry Loading
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ) : results.length === 0 ? (
               <tr>
                 <td colSpan={5} className="text-center py-6 text-muted">
-                  No products recorded yet. Run a production cycle to see results.
+                  No machine results recorded yet. Run <code>node mock-opc-client/index.js --ok</code> to send results.
                 </td>
               </tr>
             ) : (
-              products.map((prod) => (
-                <tr key={prod.id} className="table-row">
+              results.map((item) => (
+                <tr key={item.id} className="table-row">
+                  <td className="font-mono text-muted">#{item.id}</td>
                   <td className="font-mono font-medium text-cyan">
-                    {prod.serial_number}
-                  </td>
-                  <td className="font-mono text-muted">
-                    {prod.order_number || `PO-${prod.production_order_id}`}
+                    {item.machineId}
                   </td>
                   <td>
                     <span
                       className={`badge badge--${
-                        prod.status === 'PASS'
-                          ? 'success'
-                          : prod.status === 'FAIL'
-                          ? 'error'
-                          : 'warning'
+                        item.status === 'OK' ? 'success' : 'error'
                       }`}
                     >
-                      {prod.status}
+                      {item.status}
                     </span>
                   </td>
-                  <td className="font-mono text-muted text-xs">
-                    {new Date(prod.created_at).toLocaleTimeString([], {
+                  <td className="font-mono text-xs">
+                    {new Date(item.timestamp).toLocaleString([], {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
                       hour: '2-digit',
                       minute: '2-digit',
                       second: '2-digit',
                     })}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button
-                      className="table-action-btn font-mono"
-                      onClick={() => onSelectProduct(prod.serial_number)}
-                      title="Inspect full traceability"
-                    >
-                      Inspect →
-                    </button>
+                  <td className="font-mono text-muted text-xs" style={{ textAlign: 'right' }}>
+                    {new Date(item.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
                   </td>
                 </tr>
               ))
@@ -93,3 +105,4 @@ export const RecentResultsTable: React.FC<RecentResultsTableProps> = ({
     </div>
   );
 };
+
