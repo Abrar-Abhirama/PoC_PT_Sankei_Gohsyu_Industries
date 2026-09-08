@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 
 interface HealthStatus {
   status: string;
-  timestamp: string;
-  service: string;
-  version: string;
-  database: string;
-  error?: string;
+  message?: string;
 }
 
 function App() {
@@ -15,7 +11,7 @@ function App() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/health')
+    fetch('/api/v1/health')
       .then((res) => res.json())
       .then((data: HealthStatus) => {
         setHealth(data);
@@ -60,34 +56,28 @@ function App() {
           {health && (
             <div className="health-grid">
               <div className="health-item">
-                <span className="health-label">API</span>
+                <span className="health-label">API Health</span>
                 <span className={`badge badge--${health.status === 'ok' ? 'success' : 'error'}`}>
                   {health.status.toUpperCase()}
                 </span>
               </div>
               <div className="health-item">
-                <span className="health-label">Database</span>
-                <span className={`badge badge--${health.database === 'ok' ? 'success' : 'error'}`}>
-                  {health.database.toUpperCase()}
+                <span className="health-label">PostgreSQL</span>
+                <span className={`badge badge--${health.status === 'ok' ? 'success' : 'error'}`}>
+                  {health.status === 'ok' ? 'CONNECTED' : 'ERROR'}
                 </span>
               </div>
               <div className="health-item">
-                <span className="health-label">Service</span>
-                <span className="health-value">{health.service}</span>
+                <span className="health-label">Endpoint</span>
+                <span className="health-value">GET /api/v1/health</span>
               </div>
               <div className="health-item">
-                <span className="health-label">Version</span>
-                <span className="health-value">{health.version}</span>
+                <span className="health-label">Response</span>
+                <span className="health-value">{`{ "status": "${health.status}" }`}</span>
               </div>
-              <div className="health-item">
-                <span className="health-label">Timestamp</span>
-                <span className="health-value">
-                  {new Date(health.timestamp).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}
-                </span>
-              </div>
-              {health.error && (
+              {health.message && (
                 <div className="alert alert--error">
-                  <strong>DB Error:</strong> {health.error}
+                  <strong>Error:</strong> {health.message}
                 </div>
               )}
             </div>
@@ -103,7 +93,7 @@ function App() {
           <div className="endpoint-list">
             <div className="endpoint">
               <code className="method">GET</code>
-              <code className="path">/health</code>
+              <code className="path">/api/v1/health</code>
               <span className="endpoint-desc">Health check</span>
             </div>
             <div className="endpoint">

@@ -16,6 +16,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 app.use('/health', healthRouter);
+app.use('/api/v1/health', healthRouter);
 
 app.get('/api/v1', (_req: Request, res: Response) => {
   res.json({

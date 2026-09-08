@@ -4,26 +4,15 @@ import { testConnection } from '../config/database';
 const router = Router();
 
 router.get('/', async (_req: Request, res: Response) => {
-  const status = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'sankei-backend',
-    version: '1.0.0',
-    database: 'unknown' as 'ok' | 'error' | 'unknown',
-    error: undefined as string | undefined,
-  };
-
   try {
     await testConnection();
-    status.database = 'ok';
+    res.status(200).json({ status: 'ok' });
   } catch (err) {
-    status.status = 'degraded';
-    status.database = 'error';
-    status.error = err instanceof Error ? err.message : 'Unknown database error';
+    res.status(503).json({
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Database connection error',
+    });
   }
-
-  const httpStatus = status.status === 'ok' ? 200 : 503;
-  res.status(httpStatus).json(status);
 });
 
 export default router;
