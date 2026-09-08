@@ -3,10 +3,6 @@ import { testConnection } from '../config/database';
 
 const router = Router();
 
-/**
- * GET /health
- * Returns the API status and database connectivity.
- */
 router.get('/', async (_req: Request, res: Response) => {
   const status = {
     status: 'ok',
