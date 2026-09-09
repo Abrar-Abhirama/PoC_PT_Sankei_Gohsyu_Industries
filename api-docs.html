@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dokumentasi REST API — PT Sankei Gohsyu Industries</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #0B0F19;
+      --bg-surface: #111827;
+      --bg-surface-elevated: #1F2937;
+      --bg-code: #0D1117;
+      --border-color: #374151;
+      --border-subtle: #1F2937;
+      
+      --text-main: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --text-dim: #6B7280;
+      
+      --primary: #3B82F6;
+      --primary-hover: #2563EB;
+      --primary-glow: rgba(59, 130, 246, 0.2);
+      
+      --success: #10B981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #F59E0B;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --danger: #EF4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --info: #06B6D4;
+      --info-bg: rgba(6, 182, 212, 0.15);
+      
+      --badge-get: #3B82F6;
+      --badge-get-bg: rgba(59, 130, 246, 0.15);
+      --badge-post: #10B981;
+      --badge-post-bg: rgba(16, 185, 129, 0.15);
+      
+      --sidebar-width: 320px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Layout */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      height: 100vh;
+      position: sticky;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .logo-badge {
+      background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+      color: white;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    }
+
+    .sidebar-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    .sidebar-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .search-box {
+      margin-top: 1rem;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.55rem 0.85rem 0.55rem 2.2rem;
+      border-radius: 8px;
+      font-size: 0.825rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-glow);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+      font-size: 0.85rem;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0.75rem;
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+      width: 5px;
+    }
+    .sidebar-nav::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .nav-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-group-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 0.25rem 0.75rem 0.5rem;
+      font-weight: 700;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.825rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .nav-link:hover {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+    }
+
+    .nav-link.active {
+      background: var(--primary-glow);
+      color: #60A5FA;
+      font-weight: 600;
+      border-left: 3px solid var(--primary);
+    }
+
+    .method-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-get {
+      color: #60A5FA;
+      background: var(--badge-get-bg);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-post {
+      color: #34D399;
+      background: var(--badge-post-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      padding: 2.5rem 3.5rem 5rem;
+      max-width: 1200px;
+      overflow-y: auto;
+    }
+
+    /* Hero / Overview */
+    .hero-section {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.4) 100%);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 2rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #3B82F6, #10B981, #F59E0B);
+    }
+
+    .hero-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .version-tag {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93C5FD;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hero-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+      max-width: 850px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .info-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #E2E8F0;
+      word-break: break-all;
+    }
+
+    /* Architecture Flow Box */
+    .flow-diagram-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.75rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #F9FAFB;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .flow-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .flow-step-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--bg-surface-elevated);
+      padding: 0.85rem 1.25rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .step-number {
+      font-size: 0.8rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--primary-glow);
+      color: #60A5FA;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      font-size: 0.85rem;
+      color: var(--text-main);
+    }
+
+    .step-content strong {
+      color: #93C5FD;
+    }
+
+    .lifecycle-tags {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    .state-pill {
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+    }
+
+    .state-pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .state-processing {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60A5FA;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .state-ok {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .state-ng {
+      background: rgba(239, 68, 68, 0.15);
+      color: #F87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Endpoint Card */
+    .endpoint-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      scroll-margin-top: 2rem;
+      transition: border-color 0.2s;
+    }
+
+    .endpoint-card:hover {
+      border-color: #4B5563;
+    }
+
+    .endpoint-header {
+      padding: 1.25rem 1.5rem;
+      background: var(--bg-surface-elevated);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .endpoint-title-box {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #F3F4F6;
+    }
+
+    .endpoint-summary {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .endpoint-body {
+      padding: 1.5rem;
+    }
+
+    .endpoint-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* Subsections */
+    .doc-subtitle {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      font-weight: 700;
+      margin-top: 1.25rem;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Tables */
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.825rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .param-table th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      background: var(--bg-surface-elevated);
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    .param-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      vertical-align: top;
+    }
+
+    .param-name {
+      font-family: 'JetBrains Mono', monospace;
+      color: #93C5FD;
+      font-weight: 600;
+    }
+
+    .param-type {
+      font-family: 'JetBrains Mono', monospace;
+      color: #F472B6;
+      font-size: 0.75rem;
+    }
+
+    .param-req {
+      font-size: 0.7rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 700;
+      display: inline-block;
+    }
+
+    .req-true {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+    }
+
+    .req-false {
+      background: rgba(107, 114, 128, 0.2);
+      color: #9CA3AF;
+    }
+
+    /* Code Blocks & Tabs */
+    .code-box-wrapper {
+      background: var(--bg-code);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+    }
+
+    .code-box-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.85rem;
+      background: #161B22;
+      border-bottom: 1px solid #21262D;
+    }
+
+    .code-box-title {
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .copy-btn {
+      background: #21262D;
+      border: 1px solid #30363D;
+      color: var(--text-muted);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover {
+      background: #30363D;
+      color: var(--text-main);
+    }
+
+    .copy-btn.copied {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34D399;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    pre {
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.825rem;
+      line-height: 1.5;
+      color: #E6EDF3;
+    }
+
+    /* Syntax Highlight Mock */
+    .token-key { color: #7EE787; }
+    .token-str { color: #A5D6FF; }
+    .token-num { color: #79C0FF; }
+    .token-bool { color: #FF7B72; }
+    .token-comment { color: #8B949E; font-style: italic; }
+
+    /* Code Snippet Tabs */
+    .lang-tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.25rem;
+    }
+
+    .lang-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lang-tab:hover {
+      color: var(--text-main);
+      background: var(--bg-surface-elevated);
+    }
+
+    .lang-tab.active {
+      color: #60A5FA;
+      background: var(--primary-glow);
+      font-weight: 600;
+    }
+
+    /* Response Status Pill */
+    .status-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .status-200, .status-201 {
+      background: var(--success-bg);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .status-400, .status-404 {
+      background: var(--warning-bg);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-500, .status-503 {
+      background: var(--danger-bg);
+      color: #F87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Alert Boxes */
+    .callout-box {
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-size: 0.825rem;
+      margin: 1rem 0;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .callout-info {
+      background: var(--info-bg);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      color: #A5F3FC;
+    }
+
+    .callout-warning {
+      background: var(--warning-bg);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #FDE68A;
+    }
+
+    .callout-success {
+      background: var(--success-bg);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #A7F3D0;
+    }
+
+    .callout-icon {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    /* Footer */
+    .doc-footer {
+      margin-top: 4rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .app-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+      }
+      .main-content {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="logo-badge">SANKEI</span>
+          <div>
+            <div class="sidebar-title">REST API Docs</div>
+            <div class="sidebar-subtitle">v2.0.0 • PoC System</div>
+          </div>
+        </div>
+        
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="endpointSearch" class="search-input" placeholder="Cari endpoint atau kata kunci..." oninput="filterEndpoints()" />
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <!-- Overview & Info -->
+        <div class="nav-group">
+          <div class="nav-group-title">Pengenalan & Alur</div>
+          <a href="#overview" class="nav-link">
+            <span>📌</span>
+            <span>Ringkasan & Arsitektur</span>
+          </a>
+          <a href="#barcode-lifecycle" class="nav-link">
+            <span>🔄</span>
+            <span>Siklus Hidup Barcode</span>
+          </a>
+          <a href="#quickstart" class="nav-link">
+            <span>⚡</span>
+            <span>Panduan Quickstart</span>
+          </a>
+        </div>
+
+        <!-- Health & Discovery -->
+        <div class="nav-group">
+          <div class="nav-group-title">Sistem & Health</div>
+          <a href="#get-health" class="nav-link" data-keywords="health status db ping">
+            <span class="method-badge badge-get">GET</span>
+            <span>/api/v1/health</span>
+          </a>
+          <a href="#get-root" class="nav-link" data-keywords="root discovery endpoints info">
+            <span class="method-badge badge-get">GET</span>
+            <span>/api/v1</span>
+          </a>
+        </div>
+
+        <!-- IPC & Machine Inspection Flow -->
+        <div class="nav-group">
+          <div class="nav-group-title">Alur Mesin & IPC Gateway</div>
+          <a href="#get-next-barcode" class="nav-link" data-keywords="next barcode queue dequeue skip locked ipc">
+            <span class="method-badge badge-get">GET</span>
+            <span>/next-barcode</span>
+          </a>
+          <a href="#post-machine-results" class="nav-link" data-keywords="post results status ok ng inspection c# ipc">
+            <span class="method-badge badge-post">POST</span>
+            <span>/machine-results</span>
+          </a>
+        </div>
+
+        <!-- Analytics & Dashboard Query -->
+        <div class="nav-group">
+          <div class="nav-group-title">Statistik & Monitoring</div>
+          <a href="#get-summary" class="nav-link" data-keywords="summary stats yield rate kpi count">
+            <span class="method-badge badge-get">GET</span>
+            <span>/summary</span>
+          </a>
+          <a href="#get-latest" class="nav-link" data-keywords="latest recent barcode machine ok ng">
+            <span class="method-badge badge-get">GET</span>
+            <span>/latest</span>
+          </a>
+          <a href="#get-results" class="nav-link" data-keywords="history list pagination filter search barcodes">
+            <span class="method-badge badge-get">GET</span>
+            <span>/machine-results</span>
+          </a>
+        </div>
+
+        <!-- Barcode Management -->
+        <div class="nav-group">
+          <div class="nav-group-title">Manajemen Antrean Barcode</div>
+          <a href="#get-barcodes" class="nav-link" data-keywords="barcodes queue list 50">
+            <span class="method-badge badge-get">GET</span>
+            <span>/barcodes</span>
+          </a>
+          <a href="#post-barcode" class="nav-link" data-keywords="create barcode manual new pending">
+            <span class="method-badge badge-post">POST</span>
+            <span>/barcodes</span>
+          </a>
+          <a href="#post-mock-barcodes" class="nav-link" data-keywords="mock generate bulk seed batch test">
+            <span class="method-badge badge-post">POST</span>
+            <span>/barcodes/mock</span>
+          </a>
+        </div>
+
+        <!-- Reference -->
+        <div class="nav-group">
+          <div class="nav-group-title">Referensi</div>
+          <a href="#error-handling" class="nav-link">
+            <span>⚠️</span>
+            <span>Kode Error & Validasi</span>
+          </a>
+          <a href="#db-schema" class="nav-link">
+            <span>🗄️</span>
+            <span>Skema Database</span>
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      
+      <!-- HERO -->
+      <section id="overview" class="hero-section">
+        <h1 class="hero-title">
+          Dokumentasi REST API PoC Traceability
+          <span class="version-tag">v2.0.0</span>
+        </h1>
+        <p class="hero-subtitle">
+          Dokumentasi spesifikasi lengkap RESTful API untuk sistem <strong>Machine OK/NG Traceability</strong> 
+          PT Sankei Gohsyu Industries. Menghubungkan database antrean barcode, C# IPC Gateway, 
+          PLC Simulator (OPC UA), Keyence SR-1000 Barcode Reader, dan React Dashboard.
+        </p>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <div class="info-label">Base URL (Development)</div>
+            <div class="info-value">http://localhost:3000</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">API Prefix</div>
+            <div class="info-value">/api/v1</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">Format Data</div>
+            <div class="info-value">application/json (UTF-8)</div>
+          </div>
+          <div class="info-card">
+            <div class="info-label">Keamanan / Auth (PoC)</div>
+            <div class="info-value">Open (Local Network / Intranet)</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ARCHITECTURE FLOW -->
+      <section class="flow-diagram-container">
+        <h2 class="section-title">🏭 Arsitektur & Alur Pertukaran Data</h2>
+        <p class="section-desc">
+          Sistem beroperasi dalam siklus tertutup (closed-loop) terotomatisasi secara end-to-end:
+        </p>
+
+        <div class="flow-steps">
+          <div class="flow-step-item">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <strong>Database Antrean:</strong> Tabel <code>barcodes</code> menyimpan data barcode suku cadang (misal dari ERP/MES) dengan status <code>PENDING</code>.
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <strong>C# IPC Gateway Polling:</strong> Program background memanggil <code>GET /api/v1/machine-results/next-barcode</code>. Backend mengunci antrean secara atomik via <code>FOR UPDATE SKIP LOCKED</code> dan mengubah status menjadi <code>PROCESSING</code>.
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <strong>OPC UA Handshake ke PLC:</strong> IPC Gateway menulis barcode ke node <code>QR_Data</code> pada PLC Omron/Simulator dan mereset status ke <code>IDLE</code>.
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <strong>Laser Marking & Scanner Keyence SR-1000:</strong> Mesin melakukan marking dan barcode reader memverifikasi keterbacaan kode (menghasilkan status final: <code>OK</code> atau <code>NG</code>).
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-number">5</div>
+            <div class="step-content">
+              <strong>Pengiriman Hasil via API:</strong> IPC Gateway mendeteksi status, lalu mengirimkan payload ke <code>POST /api/v1/machine-results</code>.
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-number">6</div>
+            <div class="step-content">
+              <strong>Real-Time Visualization:</strong> Backend memperbarui status record dan mencatat log audit ke tabel <code>machine_results</code>. Web Frontend menampilkan indikator KPI, Yield Rate, dan tabel histori.
+            </div>
+          </div>
+        </div>
+
+        <div id="barcode-lifecycle" style="margin-top: 2rem;">
+          <h3 class="section-title" style="font-size: 1.1rem;">🔄 Status Lifecycle Barcode</h3>
+          <p class="section-desc">Setiap item barcode melewati transisi status deterministik:</p>
+          <div class="lifecycle-tags">
+            <span class="state-pill state-pending">1. PENDING (Menunggu)</span>
+            <span style="color: var(--text-dim)">➔</span>
+            <span class="state-pill state-processing">2. PROCESSING (Diambil IPC & PLC)</span>
+            <span style="color: var(--text-dim)">➔</span>
+            <span class="state-pill state-ok">3. OK (Verifikasi Sukses)</span>
+            <span style="color: var(--text-dim)">atau</span>
+            <span class="state-pill state-ng">3. NG (Verifikasi Gagal / Reject)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUICKSTART -->
+      <section id="quickstart" class="flow-diagram-container" style="margin-bottom: 2.5rem;">
+        <h2 class="section-title">⚡ Panduan Quickstart</h2>
+        <p class="section-desc">Uji coba cepat API menggunakan cURL dari terminal Anda:</p>
+        
+        <div class="code-box-wrapper">
+          <div class="code-box-header">
+            <span class="code-box-title">bash • Quick test flow</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+          </div>
+          <pre><code><span class="token-comment"># 1. Cek kesehatan server & database</span>
+curl -s http://localhost:3000/api/v1/health
+
+<span class="token-comment"># 2. Buat 10 barcode uji coba (status PENDING)</span>
+curl -X POST http://localhost:3000/api/v1/machine-results/barcodes/mock \
+  -H "Content-Type: application/json" \
+  -d '{"count": 10}'
+
+<span class="token-comment"># 3. Ambil barcode berikutnya untuk diproses (akan berpindah ke PROCESSING)</span>
+curl -s http://localhost:3000/api/v1/machine-results/next-barcode
+
+<span class="token-comment"># 4. Kirim hasil inspeksi OK atau NG dari mesin/IPC</span>
+curl -X POST http://localhost:3000/api/v1/machine-results \
+  -H "Content-Type: application/json" \
+  -d '{
+    "barcodeId": 1,
+    "machineId": "MACHINE-01",
+    "status": "OK",
+    "timestamp": "2026-09-09T06:00:00.000Z"
+  }'
+
+<span class="token-comment"># 5. Cek ringkasan KPI dan Yield Rate</span>
+curl -s http://localhost:3000/api/v1/machine-results/summary</code></pre>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 1: GET /health & /api/v1/health -->
+      <!-- ============================================================== -->
+      <article id="get-health" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/health</span>
+            <span class="endpoint-path" style="color: var(--text-dim); font-size: 0.8rem;">(alias: /health)</span>
+          </div>
+          <div class="endpoint-summary">Pengecekan koneksi server & database PostgreSQL</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Menguji apakah instance Node.js backend berjalan dan koneksi pool ke database PostgreSQL 
+            berfungsi secara normal (melakukan query ping internal). Endpoint ini digunakan oleh 
+            Docker Healthcheck, sistem monitoring, dan heartbeat UI.
+          </p>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"status"</span>: <span class="token-str">"ok"</span>
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Error Database (503 Service Unavailable)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 503</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"status"</span>: <span class="token-str">"error"</span>,
+  <span class="token-key">"message"</span>: <span class="token-str">"Database connection error: connect ECONNREFUSED 127.0.0.1:5432"</span>
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 2: GET /api/v1 -->
+      <!-- ============================================================== -->
+      <article id="get-root" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1</span>
+          </div>
+          <div class="endpoint-summary">Informasi versi API & Service Discovery</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Mengembalikan metadata aplikasi, versi rilis saat ini, status operasional, serta daftar rute utama yang tersedia.
+          </p>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"message"</span>: <span class="token-str">"Sankei Machine OK/NG Traceability API (PoC Scope)"</span>,
+  <span class="token-key">"version"</span>: <span class="token-str">"2.0.0"</span>,
+  <span class="token-key">"status"</span>: <span class="token-str">"running"</span>,
+  <span class="token-key">"endpoints"</span>: [
+    <span class="token-str">"GET  /api/v1/health"</span>,
+    <span class="token-str">"POST /api/v1/machine-results"</span>,
+    <span class="token-str">"GET  /api/v1/machine-results"</span>,
+    <span class="token-str">"GET  /api/v1/machine-results/latest"</span>,
+    <span class="token-str">"GET  /api/v1/machine-results/summary"</span>
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 3: GET /api/v1/machine-results/next-barcode -->
+      <!-- ============================================================== -->
+      <article id="get-next-barcode" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/machine-results/next-barcode</span>
+          </div>
+          <div class="endpoint-summary">Dequeue antrean barcode untuk diproses mesin (Atomic Safe)</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Endpoint kunci yang dipanggil oleh <strong>C# IPC Gateway</strong> secara periodik. 
+            Mengambil 1 item barcode terlama dengan status <code>PENDING</code> secara atomik menggunakan klausul SQL 
+            <code>FOR UPDATE SKIP LOCKED</code>, dan langsung memperbarui statusnya menjadi <code>PROCESSING</code>. 
+            Mencegah terjadinya <em>race condition</em> atau duplikasi pemrosesan ketika terdapat multiple gateway.
+          </p>
+
+          <div class="callout-box callout-info">
+            <div class="callout-icon">ℹ️</div>
+            <div>
+              Jika antrean kosong (tidak ada barcode dengan status <code>PENDING</code>), endpoint mengembalikan respon 
+              <code>200 OK</code> dengan body <code>null</code>.
+            </div>
+          </div>
+
+          <div class="doc-subtitle">Response Jika Ada Item (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"id"</span>: <span class="token-num">42</span>,
+  <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0001"</span>
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Jika Antrean Kosong (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code><span class="token-bool">null</span></code></pre>
+          </div>
+
+          <div class="doc-subtitle">Contoh Pemanggilan di C# (IPC Gateway)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">csharp • HttpClient</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code><span class="token-comment">// Contoh kode C# yang digunakan pada IpcGateway/Program.cs</span>
+var response = await httpClient.GetAsync(<span class="token-str">"http://localhost:3000/api/v1/machine-results/next-barcode"</span>);
+if (response.IsSuccessStatusCode) {
+    var raw = await response.Content.ReadAsStringAsync();
+    if (!string.IsNullOrWhiteSpace(raw) && raw.Trim() != <span class="token-str">"null"</span>) {
+        var item = JsonSerializer.Deserialize&lt;BarcodeResponse&gt;(raw);
+        Console.WriteLine($<span class="token-str">"Proses Barcode: {item.Barcode} (ID: {item.Id})"</span>);
+    }
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 4: POST /api/v1/machine-results -->
+      <!-- ============================================================== -->
+      <article id="post-machine-results" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-post">POST</span>
+            <span class="endpoint-path">/api/v1/machine-results</span>
+          </div>
+          <div class="endpoint-summary">Ingest hasil inspeksi mesin (OK / NG) dari C# IPC Gateway</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Digunakan oleh C# IPC Gateway setelah laser marking dan pembacaan barcode oleh Keyence SR-1000 selesai. 
+            Mendukung 2 alur:
+          </p>
+          <ul style="margin-left: 1.5rem; margin-bottom: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+            <li><strong>Alur Utama (Barcode-linked):</strong> Mengirimkan <code>barcodeId</code>. Status record pada tabel <code>barcodes</code> akan diperbarui dari <code>PROCESSING</code> menjadi <code>OK</code> atau <code>NG</code>, sekaligus dicatat di tabel riwayat <code>machine_results</code>.</li>
+            <li><strong>Alur Langsung / Legacy:</strong> Mengirimkan <code>machineId</code> tanpa <code>barcodeId</code>. Langsung mencatat ke tabel <code>machine_results</code>.</li>
+          </ul>
+
+          <div class="doc-subtitle">Spesifikasi Request Body (JSON)</div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Tipe</th>
+                <th>Wajib</th>
+                <th>Deskripsi & Aturan Validasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">status</span></td>
+                <td><span class="param-type">String</span></td>
+                <td><span class="param-req req-true">WAJIB</span></td>
+                <td>Harus persis bernilai <code>"OK"</code> atau <code>"NG"</code> (case-sensitive). Nilai lain akan ditolak dengan error 400.</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">timestamp</span></td>
+                <td><span class="param-type">String (ISO-8601)</span></td>
+                <td><span class="param-req req-true">WAJIB</span></td>
+                <td>Waktu verifikasi format standar ISO-8601 UTC (contoh: <code>"2026-09-09T06:14:00Z"</code> atau dengan millisecond).</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">barcodeId</span></td>
+                <td><span class="param-type">Integer</span></td>
+                <td><span class="param-req req-false">OPSIONAL*</span></td>
+                <td>ID primary key dari tabel <code>barcodes</code>. Barcode wajib berstatus <code>PROCESSING</code>. (*Wajib jika alur barcode diaktifkan).</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">machineId</span></td>
+                <td><span class="param-type">String</span></td>
+                <td><span class="param-req req-false">OPSIONAL</span></td>
+                <td>Identifier nama mesin inspeksi. Default bernilai <code>"MACHINE-01"</code> jika tidak disertakan.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="doc-subtitle">Contoh Request Body (Alur C# IPC Gateway)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • Request Payload</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"barcodeId"</span>: <span class="token-num">42</span>,
+  <span class="token-key">"machineId"</span>: <span class="token-str">"MACHINE-01"</span>,
+  <span class="token-key">"status"</span>: <span class="token-str">"OK"</span>,
+  <span class="token-key">"timestamp"</span>: <span class="token-str">"2026-09-09T06:15:22.105Z"</span>
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"message"</span>: <span class="token-str">"Barcode PART_R_ID20260909060000_0001 status successfully updated to OK"</span>,
+  <span class="token-key">"data"</span>: {
+    <span class="token-key">"id"</span>: <span class="token-num">42</span>,
+    <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0001"</span>,
+    <span class="token-key">"status"</span>: <span class="token-str">"OK"</span>,
+    <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>,
+    <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:15:22.105Z"</span>
+  }
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Contoh Respon Validasi Gagal (400 Bad Request)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 400 (Status Bukan PROCESSING)</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">false</span>,
+  <span class="token-key">"error"</span>: <span class="token-str">"Cannot update barcode with status 'OK'. Only 'PROCESSING' barcodes can be updated to 'OK'."</span>
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 5: GET /api/v1/machine-results/summary -->
+      <!-- ============================================================== -->
+      <article id="get-summary" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/machine-results/summary</span>
+            <span class="endpoint-path" style="color: var(--text-dim); font-size: 0.8rem;">(alias: /stats)</span>
+          </div>
+          <div class="endpoint-summary">Ringkasan KPI Dashboard & Perhitungan Yield Rate</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Mengembalikan statistik agregat secara instan dari database untuk mengisi kartu KPI pada Dashboard Frontend:
+            total terproses (OK + NG), total barcode keseluruhan, jumlah OK, jumlah NG, jumlah PENDING, 
+            jumlah PROCESSING, persentase Yield Rate (OK / Total Terproses * 100), dan item hasil terakhir.
+          </p>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"data"</span>: {
+    <span class="token-key">"total"</span>: <span class="token-num">120</span>,
+    <span class="token-key">"totalProcessed"</span>: <span class="token-num">120</span>,
+    <span class="token-key">"totalBarcodes"</span>: <span class="token-num">150</span>,
+    <span class="token-key">"okCount"</span>: <span class="token-num">114</span>,
+    <span class="token-key">"ngCount"</span>: <span class="token-num">6</span>,
+    <span class="token-key">"pendingCount"</span>: <span class="token-num">28</span>,
+    <span class="token-key">"processingCount"</span>: <span class="token-num">2</span>,
+    <span class="token-key">"yieldRate"</span>: <span class="token-num">95.0</span>,
+    <span class="token-key">"latestResult"</span>: {
+      <span class="token-key">"id"</span>: <span class="token-num">120</span>,
+      <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0120"</span>,
+      <span class="token-key">"status"</span>: <span class="token-str">"OK"</span>,
+      <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:18:40.000Z"</span>,
+      <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>,
+      <span class="token-key">"machineId"</span>: <span class="token-str">"MACHINE-01"</span>
+    }
+  }
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 6: GET /api/v1/machine-results/latest -->
+      <!-- ============================================================== -->
+      <article id="get-latest" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/machine-results/latest</span>
+          </div>
+          <div class="endpoint-summary">Mendapatkan 1 hasil verifikasi paling baru</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Mengembalikan item barcode terakhir yang berhasil diproses dengan status final <code>OK</code> atau <code>NG</code>. 
+            Diurutkan berdasarkan <code>updated_at DESC</code>.
+          </p>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"data"</span>: {
+    <span class="token-key">"id"</span>: <span class="token-num">88</span>,
+    <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0088"</span>,
+    <span class="token-key">"status"</span>: <span class="token-str">"OK"</span>,
+    <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:17:15.000Z"</span>,
+    <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>,
+    <span class="token-key">"machineId"</span>: <span class="token-str">"MACHINE-01"</span>
+  }
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 7: GET /api/v1/machine-results -->
+      <!-- ============================================================== -->
+      <article id="get-results" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/machine-results</span>
+          </div>
+          <div class="endpoint-summary">Daftar histori barcode dengan Pagination, Filter Status & Pencarian</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Menampilkan tabel riwayat data barcode yang mendukung pagination serverside, 
+            filter status (OK, NG, PROCESSING, PENDING, atau ALL), serta pencarian wildcard barcode (case-insensitive).
+          </p>
+
+          <div class="doc-subtitle">Query Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Tipe</th>
+                <th>Default</th>
+                <th>Deskripsi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">page</span></td>
+                <td><span class="param-type">Integer</span></td>
+                <td><code>1</code></td>
+                <td>Nomor halaman yang ingin diambil (minimal 1).</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">limit</span> / <span class="param-name">pageSize</span></td>
+                <td><span class="param-type">Integer</span></td>
+                <td><code>15</code></td>
+                <td>Jumlah baris data per halaman (1 s/d 100 baris).</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">status</span></td>
+                <td><span class="param-type">String</span></td>
+                <td><code>ALL</code></td>
+                <td>Pilihan filter: <code>OK</code>, <code>NG</code>, <code>PENDING</code>, <code>PROCESSING</code>, atau <code>ALL</code>.</td>
+              </tr>
+              <tr>
+                <td><span class="param-name">search</span></td>
+                <td><span class="param-type">String</span></td>
+                <td>-</td>
+                <td>Substring kata kunci untuk pencarian barcode (menggunakan SQL <code>ILIKE %search%</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="doc-subtitle">Contoh Request URL</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">HTTP GET</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>GET /api/v1/machine-results?page=1&limit=15&status=OK&search=PART_R</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"data"</span>: [
+    {
+      <span class="token-key">"id"</span>: <span class="token-num">95</span>,
+      <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0095"</span>,
+      <span class="token-key">"status"</span>: <span class="token-str">"OK"</span>,
+      <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:17:50.000Z"</span>,
+      <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>,
+      <span class="token-key">"machineId"</span>: <span class="token-str">"MACHINE-01"</span>
+    }
+  ],
+  <span class="token-key">"pagination"</span>: {
+    <span class="token-key">"page"</span>: <span class="token-num">1</span>,
+    <span class="token-key">"limit"</span>: <span class="token-num">15</span>,
+    <span class="token-key">"pageSize"</span>: <span class="token-num">15</span>,
+    <span class="token-key">"total"</span>: <span class="token-num">114</span>,
+    <span class="token-key">"totalPages"</span>: <span class="token-num">8</span>
+  },
+  <span class="token-key">"total"</span>: <span class="token-num">114</span>
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 8: GET /api/v1/machine-results/barcodes -->
+      <!-- ============================================================== -->
+      <article id="get-barcodes" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-get">GET</span>
+            <span class="endpoint-path">/api/v1/machine-results/barcodes</span>
+          </div>
+          <div class="endpoint-summary">Melihat 50 data barcode terbaru dalam antrean</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Menampilkan hingga 50 data barcode terbaru pada tabel <code>barcodes</code>. 
+            Mendukung query parameter <code>?status=PENDING</code> untuk memeriksa antrean yang belum diproses.
+          </p>
+
+          <div class="doc-subtitle">Query Parameters</div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Tipe</th>
+                <th>Deskripsi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">status</span></td>
+                <td><span class="param-type">String (Opsional)</span></td>
+                <td>Filter spesifik: <code>PENDING</code>, <code>PROCESSING</code>, <code>OK</code>, atau <code>NG</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="doc-subtitle">Response Berhasil (200 OK)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 200</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"data"</span>: [
+    {
+      <span class="token-key">"id"</span>: <span class="token-num">50</span>,
+      <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909060000_0050"</span>,
+      <span class="token-key">"status"</span>: <span class="token-str">"PENDING"</span>,
+      <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>,
+      <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:00:00.000Z"</span>
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 9: POST /api/v1/machine-results/barcodes -->
+      <!-- ============================================================== -->
+      <article id="post-barcode" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-post">POST</span>
+            <span class="endpoint-path">/api/v1/machine-results/barcodes</span>
+          </div>
+          <div class="endpoint-summary">Menambahkan barcode tunggal baru ke antrean (PENDING)</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Digunakan saat operator atau sistem eksternal menambahkan part baru untuk diproses mesin. 
+            Barcode baru otomatis berstatus <code>PENDING</code>.
+          </p>
+
+          <div class="doc-subtitle">Request Body (JSON)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • Request Payload</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_SANK_202609_9999"</span>
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Berhasil (201 Created)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 201</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"data"</span>: {
+    <span class="token-key">"id"</span>: <span class="token-num">51</span>,
+    <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_SANK_202609_9999"</span>,
+    <span class="token-key">"status"</span>: <span class="token-str">"PENDING"</span>,
+    <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:19:00.000Z"</span>,
+    <span class="token-key">"updatedAt"</span>: <span class="token-str">"2026-09-09T06:19:00.000Z"</span>
+  }
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ENDPOINT 10: POST /api/v1/machine-results/barcodes/mock -->
+      <!-- ============================================================== -->
+      <article id="post-mock-barcodes" class="endpoint-card">
+        <header class="endpoint-header">
+          <div class="endpoint-title-box">
+            <span class="method-badge badge-post">POST</span>
+            <span class="endpoint-path">/api/v1/machine-results/barcodes/mock</span>
+          </div>
+          <div class="endpoint-summary">Generate bulk mock barcodes (Status: PENDING)</div>
+        </header>
+        <div class="endpoint-body">
+          <p class="endpoint-desc">
+            Endpoint utilitas pengujian batch. Men-generate barcode dummy berstatus <code>PENDING</code> 
+            dalam format penamaan <code>PART_R_IDYYYYMMDDHH24MISS_XXXX</code> ke database PostgreSQL.
+          </p>
+
+          <div class="doc-subtitle">Request Body (JSON)</div>
+          <table class="param-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Tipe</th>
+                <th>Default</th>
+                <th>Batasan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="param-name">count</span></td>
+                <td><span class="param-type">Integer</span></td>
+                <td><code>20</code></td>
+                <td>Minimal 1, Maksimal 500 barcode per pemanggilan.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="doc-subtitle">Contoh Request Body</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"count"</span>: <span class="token-num">25</span>
+}</code></pre>
+          </div>
+
+          <div class="doc-subtitle">Response Berhasil (201 Created)</div>
+          <div class="code-box-wrapper">
+            <div class="code-box-header">
+              <span class="code-box-title">JSON • HTTP 201</span>
+              <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+            </div>
+            <pre><code>{
+  <span class="token-key">"success"</span>: <span class="token-bool">true</span>,
+  <span class="token-key">"message"</span>: <span class="token-str">"Successfully generated 25 mock PENDING barcodes"</span>,
+  <span class="token-key">"count"</span>: <span class="token-num">25</span>,
+  <span class="token-key">"data"</span>: [
+    {
+      <span class="token-key">"id"</span>: <span class="token-num">52</span>,
+      <span class="token-key">"barcode"</span>: <span class="token-str">"PART_R_ID20260909062000_0001"</span>,
+      <span class="token-key">"status"</span>: <span class="token-str">"PENDING"</span>,
+      <span class="token-key">"createdAt"</span>: <span class="token-str">"2026-09-09T06:20:00.000Z"</span>
+    }
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================== -->
+      <!-- ERROR HANDLING REFERENCE -->
+      <!-- ============================================================== -->
+      <section id="error-handling" class="flow-diagram-container">
+        <h2 class="section-title">⚠️ Kode Status HTTP & Penanganan Error</h2>
+        <p class="section-desc">Standar kode respon HTTP dan struktur JSON error yang dikembalikan oleh API:</p>
+
+        <table class="param-table">
+          <thead>
+            <tr>
+              <th>Status Code</th>
+              <th>Nama Status</th>
+              <th>Kondisi Terjadi</th>
+              <th>Format Respon Contoh</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="status-badge status-200">200 OK</span></td>
+              <td>Success</td>
+              <td>Permintaan GET atau pembaruan status berhasil diproses.</td>
+              <td><code>{ "success": true, "data": ... }</code></td>
+            </tr>
+            <tr>
+              <td><span class="status-badge status-201">201 Created</span></td>
+              <td>Created</td>
+              <td>Barcode baru atau entri hasil baru berhasil disimpan ke database.</td>
+              <td><code>{ "success": true, "data": ... }</code></td>
+            </tr>
+            <tr>
+              <td><span class="status-badge status-400">400 Bad Request</span></td>
+              <td>Validation Error</td>
+              <td>Payload tidak lengkap, format ISO-8601 salah, status bukan OK/NG, atau barcode bukan PROCESSING.</td>
+              <td><code>{ "success": false, "error": "status is required..." }</code></td>
+            </tr>
+            <tr>
+              <td><span class="status-badge status-404">404 Not Found</span></td>
+              <td>Resource Not Found</td>
+              <td>ID barcode tidak ditemukan dalam database atau rute endpoint salah.</td>
+              <td><code>{ "success": false, "error": "Barcode with id 99 not found" }</code></td>
+            </tr>
+            <tr>
+              <td><span class="status-badge status-500">500 Server Error</span></td>
+              <td>Internal Error</td>
+              <td>Kesalahan server tidak terduga atau kegagalan query SQL.</td>
+              <td><code>{ "success": false, "error": "Internal server error" }</code></td>
+            </tr>
+            <tr>
+              <td><span class="status-badge status-503">503 Service Unavailable</span></td>
+              <td>DB Unavailable</td>
+              <td>Koneksi ke instance PostgreSQL terputus pada pengecekan health.</td>
+              <td><code>{ "status": "error", "message": "Database connection error" }</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- DATABASE SCHEMA REFERENCE -->
+      <!-- ============================================================== -->
+      <section id="db-schema" class="flow-diagram-container">
+        <h2 class="section-title">🗄️ Referensi Skema Database PostgreSQL</h2>
+        <p class="section-desc">Struktur tabel relasional yang digunakan oleh sistem backend:</p>
+
+        <div class="code-box-wrapper">
+          <div class="code-box-header">
+            <span class="code-box-title">sql • PostgreSQL DDL</span>
+            <button class="copy-btn" onclick="copySnippet(this)">Salin</button>
+          </div>
+          <pre><code><span class="token-comment">-- Tabel 1: Antrean dan Status Siklus Hidup Barcode</span>
+CREATE TABLE IF NOT EXISTS barcodes (
+    id          SERIAL PRIMARY KEY,
+    barcode     VARCHAR(255) NOT NULL,
+    status      VARCHAR(20) NOT NULL DEFAULT 'PENDING' 
+                CHECK (status IN ('PENDING', 'PROCESSING', 'OK', 'NG')),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_barcodes_status ON barcodes(status);
+
+<span class="token-comment">-- Tabel 2: Log Audit Riwayat Mesin (OK / NG Traceability)</span>
+CREATE TABLE IF NOT EXISTS machine_results (
+    id           SERIAL PRIMARY KEY,
+    machine_id   VARCHAR(50) NOT NULL,
+    status       VARCHAR(10) NOT NULL CHECK (status IN ('OK', 'NG')),
+    timestamp    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_machine_results_machine_id ON machine_results(machine_id);
+CREATE INDEX IF NOT EXISTS idx_machine_results_status     ON machine_results(status);
+CREATE INDEX IF NOT EXISTS idx_machine_results_timestamp  ON machine_results(timestamp DESC);</code></pre>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="doc-footer">
+        <div>PoC Machine OK/NG Traceability System — PT Sankei Gohsyu Industries</div>
+        <div style="margin-top: 0.35rem; font-size: 0.75rem;">
+          Integrated with: Node.js • Express • PostgreSQL • C# IPC Gateway • Omron / Python OPC UA PLC • Keyence SR-1000 • React
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Copy Code to Clipboard
+    function copySnippet(button) {
+      const codeElement = button.closest('.code-box-wrapper').querySelector('pre code');
+      if (!codeElement) return;
+      
+      const textToCopy = codeElement.innerText;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        const originalText = button.textContent;
+        button.textContent = 'Tersalin! ✓';
+        button.classList.add('copied');
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Filter Endpoints in Sidebar & Content
+    function filterEndpoints() {
+      const query = document.getElementById('endpointSearch').value.toLowerCase().trim();
+      const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+      const cards = document.querySelectorAll('.endpoint-card');
+
+      navLinks.forEach(link => {
+        const text = link.textContent.toLowerCase();
+        const keywords = link.getAttribute('data-keywords') || '';
+        const match = text.includes(query) || keywords.toLowerCase().includes(query);
+        link.style.display = match ? 'flex' : 'none';
+      });
+
+      cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        const match = !query || text.includes(query);
+        card.style.display = match ? 'block' : 'none';
+      });
+    }
+
+    // Active Sidebar Link on Scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
+            if (link.getAttribute('href') === `#${id}`) {
+              link.classList.add('active');
+            } else {
+              link.classList.remove('active');
+            }
+          });
+        }
+      });
+    }, { threshold: 0.25 });
+
+    document.querySelectorAll('.endpoint-card, .hero-section, .flow-diagram-container').forEach(el => {
+      if (el.id) observer.observe(el);
+    });
+  </script>
+</body>
+</html>
